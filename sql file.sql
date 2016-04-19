@@ -1,4 +1,4 @@
-﻿create TYPE location_type as enum('city','suburb','district');
+﻿--create TYPE location_type as enum('city','suburb','district');
 create table location(
 	id serial primary key,
 	name varchar(50) not null,
@@ -26,18 +26,18 @@ create table address(
 create table car_bay(
 	name varchar(50) primary key,
 	addr_id int references address(addr_id),
-	description var char(254),
+	description varchar(254),
 	pos_latitude float not null,
 	pos_longitude float not null,
 	location_id int references location(id)
 );
 
-create TYPE transimssion AS enum('auto','manual');
+create TYPE transimission AS enum('auto','manual');
 
 create table car(
 	regno char(8) primary key,
 	bay varchar(50) references car_bay(name),
-	name varchar(50) uniq,
+	name varchar(50) unique,
 	year date,
 	transim transimission,
 	model_id int references car_model(model_id)
