@@ -43,6 +43,13 @@ create table car(
 	model_id int references car_model(model_id)
 );
 
-
-
+create table booking(
+	booking_no serial,
+	member_id int references member(id),
+	regno char(8) references car(regno),
+	start_time_date timestamp unique,--auto generate when create
+	start_time_hour timestamp unique,--auto generate when create
+	duration int not null check(duration>0),
+	book_date date -- auto generate
 	
+);	
