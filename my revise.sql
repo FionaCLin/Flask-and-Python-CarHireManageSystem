@@ -411,6 +411,7 @@ BEGIN TRANSACTION;
     VALUES(1,'Big Blue','City',null);
     INSERT INTO CarHireDB.Car_bay
     VALUES('Ultimo',4,'close to central station',324.34,19.02,1);
+	
 COMMIT;
 
 BEGIN TRANSACTION;
@@ -429,7 +430,11 @@ BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Member 
     VALUES (1,1,'Ms','Samantha','Huffer','SH123',1,'SamanthaHuffer@inbound.plus',null,now()-interval'4 months','24-06-1986','asdsadf','silver','abc1234');
     INSERT INTO CarHireDB.Address
-    VALUES(1,null,'5','Fergusson Street','SHANNON BROOK','NSW','2470'); 
+    VALUES(1,null,'5','Fergusson Street','SHANNON BROOK','NSW','2470');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(1,'67513893');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(1,'40399312');
     INSERT INTO CarHireDB.Payment_method
     VALUES(1,1);
     INSERT INTO CarHireDB.Paypal
@@ -451,13 +456,17 @@ BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Member 
     VALUES (2,2,'Mr','Cameron','Boswell','cb852',2,'CameronBoswell@gmail.com','Ultimo',now()-interval'9 years','02-07-1983','yw45y35','gold','ty95236');
     INSERT INTO CarHireDB.Address
-    VALUES(2,null,'55','Settlement Road','PARADISE BEACH','VIC','3851'); 
+    VALUES(2,null,'55','Settlement Road','PARADISE BEACH','VIC','3851');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(2,'67513893');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(2,'40399312');
     INSERT INTO CarHireDB.Payment_method
     VALUES(2,2);
-    INSERT INTO CarHireDB.Payment_method
-    VALUES(2,3);
     INSERT INTO CarHireDB.Bank_account
     VALUES(2,2,'ST. GEORGE','113113','15936874321456');
+    INSERT INTO CarHireDB.Payment_method
+    VALUES(2,3);
     INSERT INTO CarHireDB.Paypal
     VALUES(2,3,'CameronBoswell@gmail.com');
     INSERT INTO CarHireDB.Membership_plan
@@ -472,21 +481,27 @@ BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Member 
     VALUES (3,1,'Miss','Bella','Hopwood','BH52',3,'BellaHopwood@hotmail.com','Redfern',now()-interval'5 years','04-02-1968','yERT565','pearl','er243235');
     INSERT INTO CarHireDB.Address
-    VALUES(3,null,'61','Sale Street','HUNTLEY','NSW','2800'); 
+    VALUES(3,null,'61','Sale Street','HUNTLEY','NSW','2800');
+    INSERT INTO CarHireDB.Membership_plan
+    VALUES('pearl');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(3,'67513893');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(3,'40399312');
+    INSERT INTO CarHireDB.Member_phone
+    VALUES(3,'53191344');	
     INSERT INTO CarHireDB.Payment_method
     VALUES(3,1);
     INSERT INTO CarHireDB.Payment_method
     VALUES(3,2);
     INSERT INTO CarHireDB.Payment_method
-    VALUES(3,3);
-    INSERT INTO CarHireDB.Membership_plan
-    VALUES('pearl');
+    VALUES(3,3);   
     INSERT INTO CarHireDB.Bank_account
     VALUES(3,1,'WESTPAC','113128','87432145615936');
     INSERT INTO CarHireDB.Credit_card
     VALUES(3,2,'31-07-2019','BELLA HOPWOOD','VISA','4556568618806083');
     INSERT INTO CarHireDB.Paypal
-    VALUES(2,3,'BellaHopwood@hotmail.com');
+    VALUES(3,3,'BellaHopwood@hotmail.com');
 COMMIT;
 --create 3rd car
 BEGIN TRANSACTION;
@@ -495,29 +510,22 @@ BEGIN TRANSACTION;
 COMMIT;
   
 
---CREATE BOOKING
-BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Booking
-    VALUES (1,1,'NSW007',now()+interval '9 hours',5,now());
-    INSERT INTO CarHireDB.Booking
-    VALUES (2,1,'NSW007',now()+interval '9 days',5,now());
-	--check overlap booking trigger
-    INSERT INTO CarHireDB.Booking
-    VALUES (3,1,'NSW007',now()+interval '9 days 4 hours',3,now()); 
-COMMIT;
-
---check trigger update book_date of Booking
-UPDATE CarHireDB.BOoking SET book_date=now() where regno = 'NSW007';
-
-
-
---reject last car deletion 
-BEGIN TRANSACTION;
-    DELETE FROM CarHireDB.Car where regno='NSW007';
-COMMIT;
 --update rest of data
 UPDATE CarHireDB.Membership_plan SET monthly_fee=300,hourly_rate=8.5 WHERE title='gold';
 UPDATE CarHireDB.Membership_plan SET monthly_fee=200,hourly_rate=10,km_rate=8.5 WHERE title='silver';
 UPDATE CarHireDB.Membership_plan SET monthly_fee=100,hourly_rate=15,km_rate=10,daily_rate=8.5 WHERE title='pearl';
+
+	--CREATE BOOKING
+INSERT INTO CarHireDB.Booking VALUES (1,1,'NSW007',now()+interval '9 hours',5,now());
+INSERT INTO CarHireDB.Booking VALUES (2,1,'NSW007',now()+interval '9 days',5,now());
+	--check overlap booking trigger
+INSERT INTO CarHireDB.Booking VALUES (3,1,'NSW007',now()+interval '9 days 4 hours',3,now()); 
+	--check trigger update book_date of Booking
+UPDATE CarHireDB.BOoking SET book_date=now()+interval '9 days' where regno = 'NSW007';
+UPDATE CarHireDB.BOoking SET book_date=now()-interval '9 days' where regno = 'NSW007';
+
+	--reject last car deletion 
+DELETE FROM CarHireDB.Car where regno='QSA800';
+
 
 
