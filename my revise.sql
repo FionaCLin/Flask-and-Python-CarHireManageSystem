@@ -45,7 +45,7 @@ CREATE DOMAIN Name_type AS VARCHAR(50) CONSTRAINT Check_name CHECK ( VALUE SIMIL
 
 CREATE TABLE CarHireDB.Address(
     addr_id SERIAL,
-    building_no INTEGER,
+    building_no VARCHAR(25),
     street_no VARCHAR(25) NOT NULL,
     street_name VARCHAR(25) NOT NULL,
     suburb VARCHAR(25) NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE CarHireDB.Booking(
     regno CHAR(8) NOT NULL,
     start_time TIMESTAMP NOT NULL,
     duration INTEGER NOT NULL DEFAULT 1,
-    book_date DATE NOT NULL,
+    book_date DATE NOT NULL DEFAULT NOW(),
     PRIMARY KEY (booking_no),
     FOREIGN KEY (member_id) REFERENCES CarHireDB.Member,
     FOREIGN KEY (regno) REFERENCES CarHireDB.Car ON UPDATE CASCADE,
@@ -251,8 +251,8 @@ FOR EACH ROW
 EXECUTE PROCEDURE BayCheck();
 
 
-
---to be triggered after insertion START +DURATION AS END_TIME
+--to be triggered after insertion
+--booking can't insert if there is overlap
 CREATE OR REPLACE
 FUNCTION OverlappingTime()
 RETURNS trigger AS $$
@@ -278,7 +278,7 @@ FOR EACH ROW
 EXECUTE PROCEDURE OverlappingTime();
 
 
-
+--fire after insert in order to check in case members use other member's payment method.
 
 CREATE OR REPLACE
 FUNCTION ToPaypal()
@@ -337,16 +337,16 @@ AFTER INSERT ON CarHireDB.Credit_card
 FOR EACH ROW
 EXECUTE PROCEDURE ToCc();
 
+
+--fire before detele prefer_method from payment_method.
 CREATE OR REPLACE
 FUNCTION DelPay()
 RETURNS trigger AS $$
 BEGIN
-    IF EXISTS(SELECT prefer_method FROM CarHireDB.Member WHERE id = OLD.member_id and num = OLD.num) THEN
+    IF EXISTS(SELECT id , prefer_method FROM CarHireDB.Member WHERE id = OLD.member_id and prefer_method = OLD.num) THEN
         RAISE EXCEPTION 'Cannot delete preferred payment method';
-    ELSE
-        DELETE FROM CarHireDB.Payment_method WHERE member_id = OLD.member_id and num = OLD.num;
     END IF;
-    RETURN NEW;
+    RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -354,7 +354,7 @@ CREATE TRIGGER RemovePaymentMethod
 BEFORE DELETE ON CarHireDB.Payment_method
 FOR EACH ROW
 EXECUTE PROCEDURE DelPay();
-
+--fire after we create an empty car bay
 CREATE OR REPLACE
 FUNCTION NewBay()
 RETURNS trigger AS $$
@@ -372,6 +372,7 @@ AFTER INSERT ON CarHireDB.Car_bay
 FOR EACH ROW
 EXECUTE PROCEDURE NewBay();
 
+--fire when people update book_date
 CREATE OR REPLACE
 FUNCTION VerifyBooking()
 RETURNS trigger AS $$
@@ -394,43 +395,44 @@ EXECUTE PROCEDURE VerifyBooking();
 COMMIT;
 
 BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Location
-    VALUES(4,'Darling harbor',null,null);
-    INSERT INTO CarHireDB.Address
-    VALUES(4,null,'10','Woerdens Road','RAYMOND TERRACE EAST','NSW','2324'); 
-    INSERT INTO CarHireDB.Address
-    VALUES(5,null,'66','Peninsula Drive','KURNELL','NSW','2231'); 
+    INSERT INTO CarHireDB.Location(name)
+    VALUES('Big Blue');
+    INSERT INTO CarHireDB.Address(street_no,street_name,suburb,state,zip)
+    VALUES('10','Woerdens Road','RAYMOND TERRACE EAST','NSW','2324'); 
+    INSERT INTO CarHireDB.Address(building_no,street_no,street_name,suburb,state,zip)
+    VALUES('Unit45','66','Peninsula Drive','KURNELL','NSW','2231'); 
 COMMIT;
---create 1st 2 car
+--create 2 car(we can not create a car bay without a car so we aggregate these 2 creation in 1 transaction)
 BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Car_model
     VALUES('MG','ZR','Blue',5);
-    INSERT INTO CarHireDB.Car
-    VALUES('NSW007','Ultimo','little blue','MG','ZR',NULL,'auto');
-    INSERT INTO CarHireDB.Location
-    VALUES(1,'Big Blue','City',null);
+    INSERT INTO CarHireDB.Car(regno,bay,name,make,model,transmission)
+    VALUES('NSW080','Ultimo','little blue','MG','ZR','auto');
+    INSERT INTO CarHireDB.Location(name,loc_type,part_of)
+    VALUES('Darling harbor','City',1);
     INSERT INTO CarHireDB.Car_bay
-    VALUES('Ultimo',4,'close to central station',324.34,19.02,1);
+    VALUES('Ultimo',1,'close to central station',324.34,19.02,1);
 	
 COMMIT;
 
 BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Car_model
     VALUES('Ford','LTD04','Limo',5);
-    INSERT INTO CarHireDB.Car
-    VALUES('QSA800','Redfern','our limo','Ford','LTD04',NULL,'auto');
-    INSERT INTO CarHireDB.Location (id,name,part_of)
-    VALUES(2,'Little Fern',1);
+    INSERT INTO CarHireDB.Car(regno,bay,name,make,model,year,transmission)
+    VALUES('QSA800','Redfern','our limo','Ford','LTD04','2004-01-01','auto');
+    INSERT INTO CarHireDB.Location (name,loc_type,part_of)
+    VALUES('Little Fern','Suburb',1);
     INSERT INTO CarHireDB.Car_bay
-    VALUES('Redfern',5,'near usyd',19.02,324.34,2);
+    VALUES('Redfern',2,'near usyd',19.02,324.34,2);
 COMMIT;
+
 
 --create members
 BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Member 
-    VALUES (1,1,'Ms','Samantha','Huffer','SH123',1,'SamanthaHuffer@inbound.plus',null,now()-interval'4 months','24-06-1986','asdsadf','silver','abc1234');
+    INSERT INTO CarHireDB.Member(prefer_method,title,first_name,last_name,nick_name,address,email,since,dob,password,subscription,license_no) 
+    VALUES (1,'Ms','Samantha','Huffer','SH123',3,'SamanthaHuffer@inbound.plus',now()-interval'4 months','24-06-1986','asdsadf','silver','abc1234');
     INSERT INTO CarHireDB.Address
-    VALUES(1,null,'5','Fergusson Street','SHANNON BROOK','NSW','2470');
+    VALUES(3,null,'5','Fergusson Street','SHANNON BROOK','NSW','2470');
     INSERT INTO CarHireDB.Member_phone
     VALUES(1,'67513893');
     INSERT INTO CarHireDB.Member_phone
@@ -449,14 +451,14 @@ BEGIN TRANSACTION;
     VALUES(1,3);
     INSERT INTO CarHireDB.Credit_card
     VALUES(1,3,'01-04-2018','SAMANTHA HUFFER','MasterCard','5293118974927399');
-		
+			
 COMMIT;
 
 BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Member 
-    VALUES (2,2,'Mr','Cameron','Boswell','cb852',2,'CameronBoswell@gmail.com','Ultimo',now()-interval'9 years','02-07-1983','yw45y35','gold','ty95236');
+    INSERT INTO CarHireDB.Member(prefer_method,title,first_name,last_name,nick_name,address,email,homebay,since,dob,password,subscription,license_no) 
+    VALUES (2,'Mr','Cameron','Boswell','cb852',4,'CameronBoswell@gmail.com','Ultimo',now()-interval'9 years','02-07-1983','yw45y35','gold','ty95236');
     INSERT INTO CarHireDB.Address
-    VALUES(2,null,'55','Settlement Road','PARADISE BEACH','VIC','3851');
+    VALUES(4,null,'55','Settlement Road','PARADISE BEACH','VIC','3851');
     INSERT INTO CarHireDB.Member_phone
     VALUES(2,'67513893');
     INSERT INTO CarHireDB.Member_phone
@@ -473,15 +475,15 @@ BEGIN TRANSACTION;
     VALUES('gold');
     INSERT INTO CarHireDB.Payment_method
     VALUES(2,1);
-    INSERT INTO CarHireDB.Credit_card
-    VALUES(2,1,'01-03-2020','CAMERON BOSWELL','MasterCard','5229136636292407');
+    INSERT INTO CarHireDB.Paypal
+    VALUES(2,1,'BellaHopwood@hotmail.com');   
 COMMIT;
 
 BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Member 
-    VALUES (3,1,'Miss','Bella','Hopwood','BH52',3,'BellaHopwood@hotmail.com','Redfern',now()-interval'5 years','04-02-1968','yERT565','pearl','er243235');
+    INSERT INTO CarHireDB.Member (prefer_method,title,first_name,last_name,nick_name,address,email,homebay,since,dob,password,subscription,license_no) 
+    VALUES (1,'Miss','Bella','Hopwood','BH52',5,'BellaHopwood@hotmail.com','Redfern',now()-interval'5 years','04-02-1968','yERT565','pearl','er243235');
     INSERT INTO CarHireDB.Address
-    VALUES(3,null,'61','Sale Street','HUNTLEY','NSW','2800');
+    VALUES(5,null,'61','Sale Street','HUNTLEY','NSW','2800');
     INSERT INTO CarHireDB.Membership_plan
     VALUES('pearl');
     INSERT INTO CarHireDB.Member_phone
@@ -503,29 +505,51 @@ BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Paypal
     VALUES(3,3,'BellaHopwood@hotmail.com');
 COMMIT;
---create 3rd car
+	--create 3rd car
 BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Car
-    VALUES('ATS800','Ultimo','limo2','Ford','LTD04',NULL,'auto');
+    INSERT INTO CarHireDB.Car(regno,bay,name,make,model,transmission)
+    VALUES('JB007','Ultimo','limo2','Ford','LTD04','auto');
 COMMIT;
   
 
---update rest of data
+	--update rest of data
 UPDATE CarHireDB.Membership_plan SET monthly_fee=300,hourly_rate=8.5 WHERE title='gold';
 UPDATE CarHireDB.Membership_plan SET monthly_fee=200,hourly_rate=10,km_rate=8.5 WHERE title='silver';
 UPDATE CarHireDB.Membership_plan SET monthly_fee=100,hourly_rate=15,km_rate=10,daily_rate=8.5 WHERE title='pearl';
 
 	--CREATE BOOKING
-INSERT INTO CarHireDB.Booking VALUES (1,1,'NSW007',now()+interval '9 hours',5,now());
-INSERT INTO CarHireDB.Booking VALUES (2,1,'NSW007',now()+interval '9 days',5,now());
+INSERT INTO CarHireDB.Booking(member_id,regno,start_time,duration,book_date)
+VALUES (1,'NSW080',now()+interval '9 hours',5,now());
+INSERT INTO CarHireDB.Booking(member_id,regno,start_time,duration)
+VALUES (1,'JB007',now()+interval '9 days',5);
+INSERT INTO CarHireDB.Booking(member_id,regno,start_time,duration)
+VALUES (2,'JB007',now()+interval '7 days',4);
 	--check overlap booking trigger
 INSERT INTO CarHireDB.Booking VALUES (3,1,'NSW007',now()+interval '9 days 4 hours',3,now()); 
 	--check trigger update book_date of Booking
-UPDATE CarHireDB.BOoking SET book_date=now()+interval '9 days' where regno = 'NSW007';
-UPDATE CarHireDB.BOoking SET book_date=now()-interval '9 days' where regno = 'NSW007';
+UPDATE CarHireDB.BOoking SET book_date=now()+interval '9 days' where regno = 'NSW080';
+UPDATE CarHireDB.BOoking SET book_date=now()-interval '9 days' where regno = 'JB007';
 
+
+	--Miss create a car with a wrong carbay
+BEGIN TRANSACTION;
+    INSERT INTO CarHireDB.Car_model
+    VALUES('Fiat','Multipla','your bond',15);
+    INSERT INTO CarHireDB.Car(regno,bay,name,make,model,year,transmission)
+    VALUES('ATS800','Redfern','James Bond','Fiat','Multipla','2000-01-01','manual');
+    INSERT INTO CarHireDB.Car_bay
+    VALUES('Lovely Darling',1,'near usyd',109.02,32.34,1);
+COMMIT;
 	--reject last car deletion 
 DELETE FROM CarHireDB.Car where regno='QSA800';
 
+	--extra trigger testing?
 
+	select * from carhiredb.booking
 
+    DELETE FROM carhiredb.payment_method WHERE member_id =2 AND num =2
+    DELETE FROM carhiredb.payment_method WHERE member_id =2 AND num =1
+    SELECT * FROM carhiredb.payment_method WHERE member_id =2 
+
+   -- INSERT INTO CarHireDB.Credit_card
+   -- VALUES(2,1,'01-03-2020','CAMERON BOSWELL','MasterCard','5229136636292407');
