@@ -38,10 +38,25 @@ BEGIN TRANSACTION;
 ----------
 CREATE SCHEMA CarHireDB;
 
+--create domain for certain type of data using several entity,but for title 
+--or transimiss we only use once, we put the check inside create table
+
+--this applys to all payment method related entities
 CREATE DOMAIN Pref INTEGER CHECK (VALUE IN (1,2,3));
-CREATE DOMAIN Email VARCHAR(254) CHECK (VALUE SIMILAR TO '[\w.]+@[\w]+\.[A-Za-z]{2,}');
-CREATE DOMAIN MemberName_type AS VARCHAR(50) CONSTRAINT CheckPeople_name CHECK ( VALUE SIMILAR TO '[A-Z][a-z]*');
-CREATE DOMAIN Name_type AS VARCHAR(50) CONSTRAINT Check_name CHECK ( VALUE SIMILAR TO '[a-zA-Z0-9\s]{2,50}'); --THIS APPLY TO CAR BAY, LOCATION, CAR THEIR NAME min 3 charactors and no number.
+
+--This applys to member's email and paypal's email
+CREATE DOMAIN Email VARCHAR(254) 
+CHECK (VALUE SIMILAR TO '[\w.]+@[\w]+\.[A-Za-z]{2,}');
+
+--this applys to member firstname and lastname
+CREATE DOMAIN MemberName_type AS VARCHAR(50) CONSTRAINT 
+CheckPeople_name CHECK ( VALUE SIMILAR TO '[A-Z][a-z]*');
+--only alphabet can use in first name and last name
+
+--THIS APPLY TO CAR BAY, LOCATION, CAR THEIR NAME 
+CREATE DOMAIN Name_type AS VARCHAR(50) 
+CONSTRAINT Check_name CHECK ( VALUE SIMILAR TO '[a-zA-Z0-9\s]{2,}'); 
+--min 3 charactors not allowed symbol in the name.
 
 CREATE TABLE CarHireDB.Address(
     addr_id SERIAL,
@@ -185,12 +200,12 @@ CREATE TABLE CarHireDB.Bank_account(
     member_id INTEGER NOT NULL,
     num Pref NOT NULL,
     name VARCHAR(50) NOT NULL,
-    bsb VARCHAR(10) NOT NULL,
+    bsb CHAR(6) NOT NULL,
     account CHAR(16) NOT NULL,
     PRIMARY KEY (member_id, num),
     FOREIGN KEY (member_id, num) REFERENCES CarHireDB.Payment_method ON DELETE CASCADE,
-    CONSTRAINT Bank_name CHECK (name SIMILAR TO '[A-Z\.\s]*'),
-    CONSTRAINT Bank_bsb CHECK (bsb SIMILAR TO '[0-9\-]{6,10}')
+    CONSTRAINT Bank_name CHECK (name SIMILAR TO '[A-Z\.\s]*'), --only allow capital and space and dot
+    CONSTRAINT Bank_bsb CHECK (bsb SIMILAR TO '[0-9]*') --only allow 6 digits 
 );
 
 CREATE TABLE CarHireDB.Credit_card(
@@ -203,10 +218,10 @@ CREATE TABLE CarHireDB.Credit_card(
     PRIMARY KEY (member_id, num),
     FOREIGN KEY (member_id, num) REFERENCES CarHireDB.Payment_method ON DELETE CASCADE,
     CONSTRAINT Cc_expiry CHECK (expire > NOW()),
-    CONSTRAINT Cc_name CHECK (name SIMILAR TO '[A-Z]{3,}\s[A-Z]{3,}'),
-    CONSTRAINT Cc_no CHECK (card_no SIMILAR TO '[0-9]*')
+    CONSTRAINT Cc_name CHECK (name SIMILAR TO '[A-Z]{3,}\s[A-Z]{3,}'),--minimum 3 charactors of first_name and last name and only 1 space allowed
+    CONSTRAINT Cc_no CHECK (card_no SIMILAR TO '[0-9]*')-- only allow numbers
 );
-
+--add all the deferable constraint to group the member create in one transaction.
 ALTER TABLE CarHireDB.Member
 ADD FOREIGN KEY (id, prefer_method)
 REFERENCES CarHireDB.Payment_method
@@ -229,56 +244,8 @@ REFERENCES CarHireDB.Membership_plan
 ON UPDATE CASCADE
 DEFERRABLE INITIALLY DEFERRED;
 
---to be triggered before delete, update
---NB: bay cannot be deleted if cars exist in bay
-CREATE OR REPLACE
-FUNCTION BayCheck()
-RETURNS trigger AS $$
-DECLARE
-rem INTEGER;
-BEGIN
-    SELECT COUNT(*) FROM CarHireDB.Car WHERE bay = OLD.bay INTO rem;
-    IF rem < 1 THEN
-        RAISE EXCEPTION 'Cannot remove last car from bay';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER BayMaintenance
-AFTER DELETE OR UPDATE ON CarHireDB.Car
-FOR EACH ROW
-EXECUTE PROCEDURE BayCheck();
-
-
---to be triggered after insertion
---booking can't insert if there is overlap
-CREATE OR REPLACE
-FUNCTION OverlappingTime()
-RETURNS trigger AS $$
-
-DECLARE
-rec RECORD;
-BEGIN
-    
-    FOR rec IN SELECT start_time, start_time+(duration*interval '1 hour') as end_time FROM CarHireDB.Booking WHERE regno = NEW.regno
-    LOOP
-        IF (rec.start_time, rec.end_time) OVERLAPS (NEW.start_time, NEW.start_time+(NEW.duration*interval '1 hour')) THEN
-            RAISE EXCEPTION 'Overlapping booking';
-        END IF;
-    END LOOP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-
-CREATE TRIGGER CheckOverlappingTime
-BEFORE INSERT ON CarHireDB.Booking
-FOR EACH ROW
-EXECUTE PROCEDURE OverlappingTime();
-
-
---fire after insert in order to check in case members use other member's payment method.
+--fire after insert to member's payment method to prevent overlap in paypal or bank_card or credit_card table
+--enforce the disjoin constraint 
 
 CREATE OR REPLACE
 FUNCTION ToPaypal()
@@ -354,6 +321,8 @@ CREATE TRIGGER RemovePaymentMethod
 BEFORE DELETE ON CarHireDB.Payment_method
 FOR EACH ROW
 EXECUTE PROCEDURE DelPay();
+
+
 --fire after we create an empty car bay
 CREATE OR REPLACE
 FUNCTION NewBay()
@@ -372,9 +341,56 @@ AFTER INSERT ON CarHireDB.Car_bay
 FOR EACH ROW
 EXECUTE PROCEDURE NewBay();
 
---fire when people update book_date
+--to be triggered before delete, update
+--NB: bay cannot be deleted if cars exist in bay
 CREATE OR REPLACE
-FUNCTION VerifyBooking()
+FUNCTION BayCheck()
+RETURNS trigger AS $$
+DECLARE
+rem INTEGER;
+BEGIN
+    SELECT COUNT(*) FROM CarHireDB.Car WHERE bay = OLD.bay INTO rem;
+    IF rem < 1 THEN
+        RAISE EXCEPTION 'Cannot remove last car from bay';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER BayMaintenance
+AFTER DELETE OR UPDATE ON CarHireDB.Car
+FOR EACH ROW
+EXECUTE PROCEDURE BayCheck();
+
+--to be triggered after insertion
+--booking can't be inserted or updated if there is overlap
+CREATE OR REPLACE
+FUNCTION OverlappingTime()
+RETURNS trigger AS $$
+DECLARE
+rec RECORD;
+BEGIN
+    
+    FOR rec IN SELECT start_time, start_time+(duration*interval '1 hour') as end_time FROM CarHireDB.Booking WHERE regno = NEW.regno
+    LOOP
+        IF (rec.start_time, rec.end_time) OVERLAPS (NEW.start_time, NEW.start_time+(NEW.duration*interval '1 hour')) THEN
+            RAISE EXCEPTION 'Overlapping booking';
+        END IF;
+    END LOOP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER CheckOverlappingTime
+BEFORE INSERT OR UPDATE ON CarHireDB.Booking
+FOR EACH ROW
+EXECUTE PROCEDURE OverlappingTime();
+
+
+--fire when people update book_date of booking
+CREATE OR REPLACE
+FUNCTION VerifyUpdateBooking()
 RETURNS trigger AS $$
 DECLARE
 BEGIN
@@ -386,13 +402,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
 CREATE TRIGGER VerifyUpdateBooking
 BEFORE UPDATE ON CarHireDB.Booking
 FOR EACH ROW
-EXECUTE PROCEDURE VerifyBooking();
+EXECUTE PROCEDURE VerifyUpdateBooking();
 ----------
 COMMIT;
+
+--create some base information to create cars and car bays.
 
 BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Location(name)
@@ -402,7 +419,8 @@ BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Address(building_no,street_no,street_name,suburb,state,zip)
     VALUES('Unit45','66','Peninsula Drive','KURNELL','NSW','2231'); 
 COMMIT;
---create 2 car(we can not create a car bay without a car so we aggregate these 2 creation in 1 transaction)
+--create 2 car(we can not create a car bay without a car 
+--so we aggregate these 2 creations in 1 transaction)
 BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Car_model
     VALUES('MG','ZR','Blue',5);
@@ -412,7 +430,6 @@ BEGIN TRANSACTION;
     VALUES('Darling harbor','City',1);
     INSERT INTO CarHireDB.Car_bay
     VALUES('Ultimo',1,'close to central station',324.34,19.02,1);
-	
 COMMIT;
 
 BEGIN TRANSACTION;
@@ -451,7 +468,6 @@ BEGIN TRANSACTION;
     VALUES(1,3);
     INSERT INTO CarHireDB.Credit_card
     VALUES(1,3,'01-04-2018','SAMANTHA HUFFER','MasterCard','5293118974927399');
-			
 COMMIT;
 
 BEGIN TRANSACTION;
@@ -510,9 +526,18 @@ BEGIN TRANSACTION;
     INSERT INTO CarHireDB.Car(regno,bay,name,make,model,transmission)
     VALUES('JB007','Ultimo','limo2','Ford','LTD04','auto');
 COMMIT;
-  
 
-	--update rest of data
+--Miss create a car with a wrong carbay
+BEGIN TRANSACTION;
+    INSERT INTO CarHireDB.Car_model
+    VALUES('Fiat','Multipla','your bond',15);
+    INSERT INTO CarHireDB.Car(regno,bay,name,make,model,year,transmission)
+    VALUES('ATS800','Redfern','James Bond','Fiat','Multipla','2000-01-01','manual');
+    INSERT INTO CarHireDB.Car_bay
+    VALUES('Lovely Darling',1,'near usyd',109.02,32.34,1);
+COMMIT;
+
+	--update Membership plan of data
 UPDATE CarHireDB.Membership_plan SET monthly_fee=300,hourly_rate=8.5 WHERE title='gold';
 UPDATE CarHireDB.Membership_plan SET monthly_fee=200,hourly_rate=10,km_rate=8.5 WHERE title='silver';
 UPDATE CarHireDB.Membership_plan SET monthly_fee=100,hourly_rate=15,km_rate=10,daily_rate=8.5 WHERE title='pearl';
@@ -524,32 +549,35 @@ INSERT INTO CarHireDB.Booking(member_id,regno,start_time,duration)
 VALUES (1,'JB007',now()+interval '9 days',5);
 INSERT INTO CarHireDB.Booking(member_id,regno,start_time,duration)
 VALUES (2,'JB007',now()+interval '7 days',4);
-	--check overlap booking trigger
+
+--cascade delete payment method
+SELECT * FROM CarHireDB.Member JOIN CarHireDB.Payment_method on id=member_id WHERE id =3
+DELETE FROM CarHireDB.Member WHERE id =3;
+
+
+	--trigger rejection overlap booking
 INSERT INTO CarHireDB.Booking VALUES (3,1,'NSW007',now()+interval '9 days 4 hours',3,now()); 
-	--check trigger update book_date of Booking
+
+	--trigger rejection update book_date of Booking
 UPDATE CarHireDB.BOoking SET book_date=now()+interval '9 days' where regno = 'NSW080';
 UPDATE CarHireDB.BOoking SET book_date=now()-interval '9 days' where regno = 'JB007';
+select * from carhiredb.booking
+	--trigger rejection update overlap booking
+UPDATE CarHireDB.BOoking SET start_time=now()+interval '7 days' ,duration =5 
+WHERE booking_no=2
 
-
-	--Miss create a car with a wrong carbay
-BEGIN TRANSACTION;
-    INSERT INTO CarHireDB.Car_model
-    VALUES('Fiat','Multipla','your bond',15);
-    INSERT INTO CarHireDB.Car(regno,bay,name,make,model,year,transmission)
-    VALUES('ATS800','Redfern','James Bond','Fiat','Multipla','2000-01-01','manual');
-    INSERT INTO CarHireDB.Car_bay
-    VALUES('Lovely Darling',1,'near usyd',109.02,32.34,1);
-COMMIT;
-	--reject last car deletion 
+	
+	--trigger rejection last car deletion 
 DELETE FROM CarHireDB.Car where regno='QSA800';
 
-	--extra trigger testing?
-
-	select * from carhiredb.booking
-
-    DELETE FROM carhiredb.payment_method WHERE member_id =2 AND num =2
-    DELETE FROM carhiredb.payment_method WHERE member_id =2 AND num =1
-    SELECT * FROM carhiredb.payment_method WHERE member_id =2 
-
-   -- INSERT INTO CarHireDB.Credit_card
-   -- VALUES(2,1,'01-03-2020','CAMERON BOSWELL','MasterCard','5229136636292407');
+	--trigger enforece payment method disjoint constraint
+	--delete non-prefer method
+    DELETE FROM CarHireDB.Payment_method WHERE member_id =2 AND num =1
+	--trigger rejection delete prefer method
+    DELETE FROM CarHireDB.Payment_method WHERE member_id =2 AND num =2
+	--trigger rejection voilate disjoin constraint
+    INSERT INTO CarHireDB.Payment_method VALUES(2,1)
+    INSERT INTO CarHireDB.Credit_card 
+    VALUES(2,1,'01-03-2020','CAMERON BOSWELL','MasterCard','5229136636292407');
+    INSERT INTO CarHireDB.Paypal
+    VALUES(2,1,'BellaHopwood@hotmail.com');
