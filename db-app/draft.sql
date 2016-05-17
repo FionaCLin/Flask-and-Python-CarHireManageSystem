@@ -1,4 +1,35 @@
-﻿(
+﻿--regno c.name make model year
+
+SELECT regno, name from carsharing.car
+
+
+--To be triggered after insertion
+--booking can't be inserted or updated if there is overlap
+CREATE OR REPLACE
+FUNCTION OverlappingTime()
+RETURNS trigger AS $$
+DECLARE
+rec RECORD;
+BEGIN
+    
+    FOR rec IN SELECT start_time, start_time+(duration*interval '1 hour') as end_time FROM CarHireDB.Booking WHERE regno = NEW.regno
+    LOOP
+        IF (rec.start_time, rec.end_time) OVERLAPS (NEW.start_time, NEW.start_time+(NEW.duration*interval '1 hour')) THEN
+            RAISE EXCEPTION 'Overlapping booking';
+        END IF;
+    END LOOP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER CheckOverlappingTime
+BEFORE INSERT OR UPDATE ON CarHireDB.Booking
+FOR EACH ROW
+EXECUTE PROCEDURE OverlappingTime();
+
+
+(
 SELECT carsharing.carbay.name , address, count(regno) 
 FROM carsharing.carbay  JOIN carsharing.car ON bayid = parkedat 
 WHERE carsharing.carbay.name ILIKE '%KELLY%' or address LIKE '%KELLY%'

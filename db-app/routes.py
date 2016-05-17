@@ -110,13 +110,13 @@ def list_cars():
         flash("Error, car \'{}\' does not exist".format(car))
         page['bar'] = False
 
-    return render_template('car_detail.html', car=val, session=session)
+    return render_template('car_detail.html', car=val, session=session,page=page)
 
 #####################################################
 ##  LIST BAYS
-##  TODO
-##      - In the POST, check for null
+##  
 #####################################################
+
 
 @app.route('/list-bays', methods=['POST', 'GET'])
 def list_bays():
@@ -134,7 +134,8 @@ def list_bays():
                 val = []
                 flash("Error, no bays in our system.")
                 page['bar'] = False
-            return render_template('bay_list.html', bays=val, session=session)
+                #return(redirect(url_for('index')))
+            return render_template('bay_list.html', bays=val, session=session,page=page)
 
         # Try to get from the database
         val = database.get_bay(bay)
@@ -143,7 +144,6 @@ def list_bays():
             val = []
             flash("Error, car bay \'{}\' does not exist".format(bay))
             page['bar'] = False
-
         if(cars is None):
             cars = []
         return render_template('bay_detail.html', bay=val, cars=cars, session=session, user=user_details, page=page)
@@ -152,11 +152,14 @@ def list_bays():
         # The user is searching for a bay
         val = database.search_bays(request.form['search'])
         # Check for nulls / handle what happens if empty?
+        
         if(val is None):
-            val=[]
+            val = []
+            flash("Error, car bay named \'{}\' does not exist".format(request.form['search']))
             page['bar'] = False
-            flash("Error, no bays with search term") #I haven't figure out this yet
-        return render_template('bay_list.html', bays=val, session=session)
+      
+        return render_template('bay_list.html', bays=val, session=session, page=page)
+
 
 #####################################################
 ## HOMEBAY

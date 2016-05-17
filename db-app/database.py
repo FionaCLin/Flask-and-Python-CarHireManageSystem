@@ -51,6 +51,8 @@ def check_login(email, password):
             WHERE email = %s AND password = %s """
         cur.execute(sql , (email, password))
         val = cur.fetchone()
+        if len(val)==0:
+            val=None
     except:
         #If there were any errors, return a NULL row printing an error to the debug
         print("Error with Database")
@@ -112,8 +114,11 @@ def get_all_bookings(email):
                  WHERE email=%s) """
         cur.execute(sql, (email, ))
         rows = cur.fetchall()
-        for row in rows:
-            row[3] = int(row[3])
+        if len(rows)==0:
+           rows=None
+        else:
+            for row in rows:
+                row[3] = int(row[3])
     except:
         print("Error fetching from database")
     cur.close()
@@ -137,12 +142,12 @@ def get_booking(b_date, b_hour, car):
         # It has to have the combination of date, hour and car
         cur.execute(sql , (car, b_date, b_hour))
         row = cur.fetchone()
-        row[4]=int(row[4])
-        row[5]=int(row[5])
-        print(row[4])
-        print(row)
+        if len(row)==0:
+            row=None
+        else:
+            row[4]=int(row[4])
+            row[5]=int(row[5])
     except Exception as e:
-        print(e)
         print("Error fetching from database")
     cur.close()
     conn.close()
@@ -163,12 +168,42 @@ def get_car_details(regno):
     try:
         cur.execute(""" SELECT regno,c.name, make, model, year,transmission, category,capacity, b.name, walkscore,mapurl FROM carsharing.car AS c NATURAL JOIN carsharing.carmodel JOIN carsharing.carbay AS b ON parkedat=bayid WHERE regno = %s""",(regno,))
         val=cur.fetchone()
+        if len(val)==0:
+            val=None
     except Exception as e:
         print(e)
         print("Error with fetching from databade")
     cur.close()
     conn.close()
     return val
+
+
+def get_all_cars():
+    rows = None
+    #dummy data[ ['66XY99', 'Ice the Cube', 'Nissan', 'Cube', '2007', 'auto'], ['WR3KD', 'Bob the SmartCar', 'Smart', 'Fortwo', '2015', 'auto']]
+
+    conn = database_connect()
+    if(conn is None):
+        return ERROR_CODE
+    cur =conn.cursor()
+    try:
+
+    # Get all cars that PeerCar has
+    # Return the results
+
+      cur.execute(""" SELECT regno, name from carsharing.car""")
+      rows = cur.fetchall()
+      if len(rows)==0:
+        rows=None
+    except Exception as e:
+      print(e)
+      print("Error fetching from database")
+    cur.close()
+    conn.close()
+    return rows 
+
+
+
 
 #####################################################
 ##  Bay (detail, list, finding cars inside bay)
@@ -184,10 +219,13 @@ def get_all_bays():
     cur = conn.cursor()
     rows =None
     try:
+        #problem need to has indicator!!!!!
         # Get all the bays that PeerCar has :)
         # And the number of bays
         cur.execute(""" SELECT carsharing.carbay.name , address, count(regno) FROM carsharing.carbay  JOIN carsharing.car ON bayid = parkedat GROUP BY bayid """)
         rows = cur.fetchall()
+        if len(rows)==0:
+           rows=None
     except Exception as e:
         print(e)
         print("Error with database")  
@@ -204,10 +242,13 @@ def get_bay(name):
     cur = conn.cursor()
     
     # Get the information about the bay with this unique name
-    # Make sure you're checking ordering ;)
+    # Make sure you're checking ordering?? ;)
     try:
-        cur.execute(""" SELECT name ,description, address,gps_lat,gps_long FROM carsharing.carbay WhERE name =%s """,(name,))
+        #problem need to has indicator!!!!!
+        cur.execute(""" SELECT name ,description, address,gps_lat,gps_long FROM carsharing.carbay WhERE name =%s""",(name,))
         val = cur.fetchone()
+        if len(val)==0:
+            val=None
     except Exception as e:
         print(e)
         print("Error with database")
@@ -226,11 +267,13 @@ def search_bays(search_term):
     try:
     # Select the bays that match (or are similar) to the search term
     # You may like this
+    #problem need to has indicator!!!!!
         search_term = "%" + search_term + "%"
-        print(search_term)
         sql = """ SELECT carsharing.carbay.name, address, count(regno)  FROM carsharing.carbay  JOIN carsharing.car ON bayid = parkedat WHERE carsharing.carbay.name ILIKE %s or address ILIKE %s GROUP BY bayid """
         cur.execute(sql,(search_term,search_term))
         rows = cur.fetchall();
+        if len(rows)==0:
+            rows=None
     except Exception as e:
         print(e)
         print("error with fetching database")
@@ -251,6 +294,8 @@ def get_cars_in_bay(bay_name):
         # Return simple details (only regno and name)
         cur.execute(""" SELECT regno, name FROM carsharing.car WHERE parkedat = ( SELECT bayid FROM carsharing.carbay WHERE name = %s) """ , (bay_name,))
         rows = cur.fetchall()
+        if len(rows)==0:
+            rows=None
     except Exception as e:
         print(e)
         print("error with fetching from database")
