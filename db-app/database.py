@@ -2,7 +2,7 @@
 
 from modules import pg8000
 import configparser
-
+import bcrypt
 
 # Define some useful variables
 ERROR_CODE = 55929
@@ -36,29 +36,94 @@ def database_connect():
 ##  Login
 #####################################################
 
+
+
+
+
+
+
 def check_login(email, password):
-    # Dummy data 
-    #['Shadow', 'Mr', 'Evan', 'Nave', '123 Fake Street, Fakesuburb', 'SIT', '01-05-2016', 'Premium', '1']
+    # TODO
+    # Check if the user details are correct!
+    # Return the relevant information (watch the order!)
+    #make password comparable
     val = None
-    #Ask for the database connection, and get the cursor set up
     conn = database_connect()
-    if(conn is None):
+    if conn is None:
         return ERROR_CODE
     cur = conn.cursor()
     try:
-        #Try executing the SQL and get from the database
-        sql = """SELECT  nickname, nametitle, namegiven , namefamily, c.address, cb.name,since, subscribed,stat_nrofbookings FROM carsharing.Member as c join carsharing.carbay as cb on homebay = bayid
-            WHERE email = %s AND password = %s """
-        cur.execute(sql , (email, password))
+        sql = """select nickname, nametitle, namegiven, namefamily, 
+                 address, homebay, since, subscribed, stat_nrOfBookings,
+                 password
+                 from carsharing.member
+                 where email = %s
+              """
+        cur.execute(sql, (email,))
         val = cur.fetchone()
-        if len(val)==0:
-            val=None
+        if !isinstance(password, bytes):
+            password = password.encode('UTF-8')
+        if !isinstance(val[9], bytes):
+            val[9] = val[9].encode('UTF-8')
+        if bcrypt.hashpw(password, val[9]) != val[9]:
+            val = None
     except:
-        #If there were any errors, return a NULL row printing an error to the debug
-        print("Error with Database")
-    cur.close()             #Close the cursor
-    conn.close()            #Close the connection to the db
+        print("Error")
+
+    cur.close()
+    conn.close()
     return val
+
+
+#~ def update_homebay(email, bayname):
+    #~ # TODO
+    #~ # Update the user's homebay
+    #~ isUpdated = False
+    #~ conn = database_connect()
+    #~ if conn is None:
+        #~ return ERROR_CODE
+    #~ cur = conn.cursor()
+    #~ try:
+        #~ sql = """update carsharing.member
+                 #~ set homebay = (select bayid from carsharing.carbay where name = %s)
+                 #~ where email = %s
+              #~ """
+        #~ cur.execute(sql, (bayname, email))
+        #~ conn.commit()
+        #~ isUpdated = cur.rowcount() > 0
+    #~ except:
+        #~ print("Error")
+
+    #~ cur.close()
+    #~ conn.close()
+    #~ return isUpdated
+
+
+
+
+#~ def check_login(email, password):
+    #~ # Dummy data 
+    #~ #['Shadow', 'Mr', 'Evan', 'Nave', '123 Fake Street, Fakesuburb', 'SIT', '01-05-2016', 'Premium', '1']
+    #~ val = None
+    #~ #Ask for the database connection, and get the cursor set up
+    #~ conn = database_connect()
+    #~ if(conn is None):
+        #~ return ERROR_CODE
+    #~ cur = conn.cursor()
+    #~ try:
+        #~ #Try executing the SQL and get from the database
+        #~ sql = """SELECT  nickname, nametitle, namegiven , namefamily, c.address, cb.name,since, subscribed,stat_nrofbookings FROM carsharing.Member as c join carsharing.carbay as cb on homebay = bayid
+            #~ WHERE email = %s AND password = %s """
+        #~ cur.execute(sql , (email, password))
+        #~ val = cur.fetchone()
+        #~ if len(val)==0:
+            #~ val=None
+    #~ except:
+        #~ #If there were any errors, return a NULL row printing an error to the debug
+        #~ print("Error with Database")
+    #~ cur.close()             #Close the cursor
+    #~ conn.close()            #Close the connection to the db
+    #~ return val
 
 #####################################################
 ##  Homebay
