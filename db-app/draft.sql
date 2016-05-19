@@ -24,7 +24,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE TRIGGER CheckOverlappingTime
-BEFORE INSERT OR UPDATE ON CarHireDB.Booking
+BEFORE INSERT OR UPDATE ON carsharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE OverlappingTime();
 
