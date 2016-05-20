@@ -1,4 +1,32 @@
-﻿--regno c.name make model year
+﻿select member, 
+ntile(5) over (order by stat_nrofbookings) as freq, 
+ntile(5) over (order by most_recent_booking_date) as rec,
+ntile(5) over (order by total_amt) as exp,
+weekeendBooking as type
+from frat_table
+order by freq desc, rec desc, exp desc
+
+
+(select bookid) from booking where date between )>( )
+
+--my booking stored procedure
+
+(SELECT memberno from carsharing.member where email='Mrbond007Bond@gmail.com')
+
+select date '2001-09-28' + time '07:00'
+
+INSERT INTO carsharing.booking 
+(car,madeby,whenbooked,starttime,endtime)
+VALUES ('AU46WO', 
+(SELECT memberno from carsharing.member where email='Mrbond007Bond@gmail.com')
+, '2017-05-20 16:44:08', '2017-05-20 17:00:00', '2017-05-20 19:00:00');
+
+
+CREATE FUNCTION makeBooking()
+  RETURNS INTEGER AS
+
+
+--regno c.name make model year
 
 SELECT regno, name from carsharing.car
 
@@ -12,7 +40,7 @@ DECLARE
 rec RECORD;
 BEGIN
     
-    FOR rec IN SELECT start_time, start_time+(duration*interval '1 hour') as end_time FROM CarHireDB.Booking WHERE regno = NEW.regno
+    FOR rec IN SELECT start_time, start_time+(duration*interval '1 hour') as end_time FROM CarHireDB.Booking WHERE car = NEW.car
     LOOP
         IF (rec.start_time, rec.end_time) OVERLAPS (NEW.start_time, NEW.start_time+(NEW.duration*interval '1 hour')) THEN
             RAISE EXCEPTION 'Overlapping booking';
@@ -27,6 +55,8 @@ CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON carsharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE OverlappingTime();
+
+
 
 
 (

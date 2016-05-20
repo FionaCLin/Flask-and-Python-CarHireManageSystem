@@ -224,7 +224,7 @@ def new_booking():
     if(success == True):
         page['bar'] = True
         flash("Booking Successful!")
-        return(redirect(url_for('index')))
+        return(redirect(url_for('my_bookings')))
     else:
         page['bar'] = False
         flash("There was an error making your booking.")

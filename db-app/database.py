@@ -53,17 +53,19 @@ def check_login(email, password):
         return ERROR_CODE
     cur = conn.cursor()
     try:
-        sql = """select nickname, nametitle, namegiven, namefamily, 
-                 address, homebay, since, subscribed, stat_nrOfBookings,
-                 password
-                 from carsharing.member
-                 where email = %s
-              """
-        cur.execute(sql, (email,))
+        # sql = """select nickname, nametitle, namegiven, namefamily, 
+        #          address, homebay, since, subscribed, stat_nrOfBookings,
+        #          password
+        #          from carsharing.member
+        #          where email = %s
+        #       """
+        # cur.execute(sql, (email,))
+        sql = """SELECT  nickname, nametitle, namegiven , namefamily, c.address, cb.name,since, subscribed,stat_nrofbookings, password FROM carsharing.Member as c join carsharing.carbay as cb on homebay = bayid WHERE email = %s """
+        cur.execute(sql , (email,))
         val = cur.fetchone()
-        if !isinstance(password, bytes):
+        if not isinstance(password, bytes):
             password = password.encode('UTF-8')
-        if !isinstance(val[9], bytes):
+        if not isinstance(val[9], bytes):
             val[9] = val[9].encode('UTF-8')
         if bcrypt.hashpw(password, val[9]) != val[9]:
             val = None
@@ -140,7 +142,7 @@ def update_homebay(email, bayname):
        
         cur.execute(sql , (bayname , email ))
         conn.commit()
-        isUpdated = True
+        isUpdated = cur.rowcount() > 0
     except Exception as e:
         print(e)
         print("Error with update database")
@@ -153,15 +155,34 @@ def update_homebay(email, bayname):
 #####################################################
 
 def make_booking(email, car_rego, date, hour, duration):
-    # TODO
+    val = None
+    isCreate=False
+    conn = database_connect()
+    if(conn is None):
+        return ERROR_CODE
+    cur = conn.cursor()
+    try:
     # Insert a new booking
+    # prototype or my procedure
+        sql = """ SELECT makeBooking(%s,%s,%s,%s,%s)"""
+
+        cur.excecute(sql,(car_rego,email,date,hour,duration))
+        conn.commit()
+        isCreate = cur.rowcount() > 0
+        if(isCreate):
+            val = get_booking( date, hour, car_rego)
+    except Exception as e:
+        print(e)
+        print("Error with database")
+    cur.close()
+    conn.close()
     # Make sure to check for:(I think for this check, we can use some constraint check from assignment 2)
     #       - If the member already has booked at that time
     #       - If there is another booking that overlaps
     #       - Etc.
     # return False if booking was unsuccessful :)
     # We want to make sure we check this thoroughly
-    return True
+    return val
 
 
 def get_all_bookings(email):
@@ -173,18 +194,11 @@ def get_all_bookings(email):
     rows =None
     try:
         #Try to get all the info return from the query
-        sql = """ SELECT b.car , c.name , to_char(b.starttime,'DD-MM-YYYY') AS date , EXTRACT(HOUR FROM starttime) AS time FROM carsharing.Booking AS b join carsharing.Car As C ON car = regno 
-            WHERE b.madeby = 
-                (SELECT memberno FROM carsharing.member 
-                 WHERE email=%s) """
-        cur.execute(sql, (email, ))
+        cur.execute(""" SELECT * FROM getAllBooking(%s); """, (email,))
         rows = cur.fetchall()
-        if len(rows)==0:
-           rows=None
-        else:
-            for row in rows:
-                row[3] = int(row[3])
-    except:
+        print(rows)
+    except Exception as e:
+        print(e);
         print("Error fetching from database")
     cur.close()
     conn.close()
@@ -200,18 +214,11 @@ def get_booking(b_date, b_hour, car):
     cur = conn.cursor()
     row = None
     try:
-        sql = """ SELECT m.namegiven||' '||m.namefamily, b.car, c.name, to_char(b.starttime,'DD-MM-YYYY') AS date,   EXTRACT(HOUR FROM starttime) as hour ,EXTRACT( hour FROM endtime-starttime) AS duration , to_char(b.whenbooked,'DD-MM-YYYY') AS bookeddate , cb.name
-        FROM carsharing.booking AS b JOIN carsharing.car AS C ON car=regno JOIN carsharing.member AS m ON b.madeby= m.memberno JOIN carsharing.carbay as cb ON c.parkedat=cb.bayid
-        WHERE b.car=%s AND to_char(b.starttime,'DD-MM-YYYY') = %s AND EXTRACT(HOUR FROM starttime) = %s """
+        
         # Get the information about a certain booking
         # It has to have the combination of date, hour and car
-        cur.execute(sql , (car, b_date, b_hour))
+        cur.execute("""SELECT * FROM fetchbooking(%s,%s,%s)""", (car, b_date, b_hour))
         row = cur.fetchone()
-        if len(row)==0:
-            row=None
-        else:
-            row[4]=int(row[4])
-            row[5]=int(row[5])
     except Exception as e:
         print("Error fetching from database")
     cur.close()
@@ -231,7 +238,7 @@ def get_car_details(regno):
         return ERROR_CODE
     cur = conn.cursor()
     try:
-        cur.execute(""" SELECT regno,c.name, make, model, year,transmission, category,capacity, b.name, walkscore,mapurl FROM carsharing.car AS c NATURAL JOIN carsharing.carmodel JOIN carsharing.carbay AS b ON parkedat=bayid WHERE regno = %s""",(regno,))
+        cur.execute(""" Select * From getCarDetail(%s)""",(regno,))
         val=cur.fetchone()
         if len(val)==0:
             val=None
@@ -258,6 +265,7 @@ def get_all_cars():
 
       cur.execute(""" SELECT regno, name from carsharing.car""")
       rows = cur.fetchall()
+      print(rows)
       if len(rows)==0:
         rows=None
     except Exception as e:
@@ -287,7 +295,7 @@ def get_all_bays():
         #problem need to has indicator!!!!!
         # Get all the bays that PeerCar has :)
         # And the number of bays
-        cur.execute(""" SELECT carsharing.carbay.name , address, count(regno) FROM carsharing.carbay  JOIN carsharing.car ON bayid = parkedat GROUP BY bayid """)
+        cur.execute("""SELECT * FROM GETALLBAYS()""")
         rows = cur.fetchall()
         if len(rows)==0:
            rows=None
@@ -310,10 +318,9 @@ def get_bay(name):
     # Make sure you're checking ordering?? ;)
     try:
         #problem need to has indicator!!!!!
-        cur.execute(""" SELECT name ,description, address,gps_lat,gps_long FROM carsharing.carbay WhERE name =%s""",(name,))
+        cur.execute("""SELECT * FROM getBay(%s)""",(name,))
         val = cur.fetchone()
-        if len(val)==0:
-            val=None
+        
     except Exception as e:
         print(e)
         print("Error with database")
@@ -333,9 +340,8 @@ def search_bays(search_term):
     # Select the bays that match (or are similar) to the search term
     # You may like this
     #problem need to has indicator!!!!!
-        search_term = "%" + search_term + "%"
-        sql = """ SELECT carsharing.carbay.name, address, count(regno)  FROM carsharing.carbay  JOIN carsharing.car ON bayid = parkedat WHERE carsharing.carbay.name ILIKE %s or address ILIKE %s GROUP BY bayid """
-        cur.execute(sql,(search_term,search_term))
+       
+        cur.execute("""SELECT * FROM fetchBays(%s)""",(search_term,))
         rows = cur.fetchall();
         if len(rows)==0:
             rows=None
@@ -357,7 +363,7 @@ def get_cars_in_bay(bay_name):
         # Get the cars inside the bay with the bay name
         # Cars who have this bay as their bay :)
         # Return simple details (only regno and name)
-        cur.execute(""" SELECT regno, name FROM carsharing.car WHERE parkedat = ( SELECT bayid FROM carsharing.carbay WHERE name = %s) """ , (bay_name,))
+        cur.execute(""" select * from getCarsInBay(%s) """ , (bay_name,))
         rows = cur.fetchall()
         if len(rows)==0:
             rows=None
