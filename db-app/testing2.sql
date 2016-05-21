@@ -106,7 +106,7 @@ RETURNS TABLE( bname VARCHAR, descr text,
  addr VARCHAR,gpsLat FLOAT,gpsLong FLOAT,walkscore INT) AS $$
 BEGIN
  RETURN QUERY 
- SELECT name ,description,address,gps_lat,gps_long, walkscore
+ SELECT name ,description,address,gps_lat,gps_long, cb.walkscore
  FROM carbay cb WhERE cb.name =n;
  END;
  $$LANGUAGE 'plpgsql';

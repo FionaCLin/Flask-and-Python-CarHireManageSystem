@@ -255,3 +255,17 @@ def my_bookings():
     # If no booking, then get all the bookings made by the user
     val = database.get_all_bookings(user_details['email'])
     return render_template('bookings_list.html', bookings=val, session=session, page=page)
+
+
+
+
+#####################################################
+## HOMEBAY
+#####################################################
+@app.route('/analysis')
+def memAnalysis():
+    
+    return render_template('memberAnalysis.html',
+        session=session,
+        page=page,
+        reports=[])

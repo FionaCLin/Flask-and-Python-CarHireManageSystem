@@ -3,6 +3,7 @@
 <div class="content">
     <div class="container details">
         <h1 class="title"> Welcome, {{ user.nickname }}</h1>
+
         <table>
             <tr>
                 <td> Name </td>
@@ -27,7 +28,18 @@
             <tr>
                 <td>Number Of Bookings:</td>
                 <td>{{ user.num_bookings }}</td>
+            </tr>
+            <tr>
+                <td>Member Summary Report</td>
+                <td> <form class="flat"  action="{{url_for('memAnalysis')}}">
+                    <button class="flat" type="submit">
+                        Member Analysis
+                    </button>
+                    </form>
+                </td>
+            </tr>
         </table>
+        
     </div>
 </div>
 {% include 'bottom.html'%}

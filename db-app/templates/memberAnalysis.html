@@ -1,0 +1,38 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title">Member Analysis</h1>
+        <!-- <div class="search">
+            <form class="search-top" method="POST" action="{{url_for('list_bays')}}">
+                <input type="text" name="search" placeholder="Search" autofocus required>
+                <button class="flat" type="submit">Submit</button>
+                <div class="clear"></div>
+            </form>
+        </div> -->
+        <table class="styled">
+            <thead>
+                <tr>
+                    <th>Member Name</th>
+                    <th>Frequency</th>
+                    <th>Recency</th>
+                    <th>Amount</th>
+                    <th>Weekend Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                    {% for memRecord in reports %}
+                    <tr>
+                        <td>{{memRecord[0] }}</td>
+                        <td>{{memRecord[1] }}</td>
+                        <td>{{memRecord[2] }}</td>
+                        <td>{{memRecord[3] }}</td>
+                        <td>{{memRecord[3] }}</td>
+                    </tr>
+                    {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'bottom.html' %}
