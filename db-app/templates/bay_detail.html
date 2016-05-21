@@ -27,7 +27,18 @@
                 <td> Longitude </td>
                 <td> {{ bay[4] }} </td>
             </tr>
+            <tr>
+                <td> Walkscore </td>
+                <td> {{ bay[5] }} </td>
+            </tr>
+            <tr>
+                <td> Map </td>
+                <td>
+                <iframe src="https://www.google.com/maps/embed?pb=!1m10!1m8!1m3!1d827.6941385245344!2d{{bay[3]}}!3d{{bay[4]}}!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sau!4v1463803223457" width="600" height="450" frameborder="0" style="border:0" allowfullscreen></iframe>
+                </td>
+            </tr>
         </table>
+
 
         <h2>Cars</h2>
         <table class="styled left">
@@ -35,6 +46,7 @@
                 <tr>
                     <td>Regno</td>
                     <td>Name</td>
+                    <td>Availability</td>
                 </tr>
             </thead>
             <tbody>
@@ -42,6 +54,7 @@
                 <tr>
                     <td><a href="{{url_for('list_cars')}}?car={{ car[0] }}">{{ car[0] }}</a></td>
                     <td>{{ car[1] }}</td>
+                    <td>{{ car[2] }}</td>
                     <td><a class="book_button" href="{{url_for('new_booking')}}?car={{car[0]}}">Book Me!</a></td>
                 </tr>
                 {% endfor %}

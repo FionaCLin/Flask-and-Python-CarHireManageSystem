@@ -132,17 +132,14 @@ def check_login(email, password):
 #####################################################
 def update_homebay(email, bayname):
     #Ask for the database connection, and get the cursor set up
-    isUpdated=False
+    isUpdated=None
     conn = database_connect()
     if(conn is None):
         return ERROR_CODE
     cur = conn.cursor()
-    try:
-        sql = """ UPDATE carsharing.member SET homebay = (SELECT bayid FROM carsharing.carbay WHERE name = %s) WHERE email = %s """
-       
-        cur.execute(sql , (bayname , email ))
-        conn.commit()
-        isUpdated = cur.rowcount() > 0
+    try:       
+        cur.execute("""Select * FROM updateHomebay(%s,%s)""", ( email ,bayname))
+        isUpdated=cur.fetchone()[0]
     except Exception as e:
         print(e)
         print("Error with update database")
@@ -155,7 +152,7 @@ def update_homebay(email, bayname):
 #####################################################
 
 def make_booking(email, car_rego, date, hour, duration):
-    val = None
+   
     isCreate=False
     conn = database_connect()
     if(conn is None):
@@ -166,11 +163,11 @@ def make_booking(email, car_rego, date, hour, duration):
     # prototype or my procedure
         sql = """ SELECT makeBooking(%s,%s,%s,%s,%s)"""
 
-        cur.excecute(sql,(car_rego,email,date,hour,duration))
+        cur.execute(sql,(car_rego,email,date,hour,duration))
+        isCreate=cur.fetchone()[0]
         conn.commit()
-        isCreate = cur.rowcount() > 0
-        if(isCreate):
-            val = get_booking( date, hour, car_rego)
+        #isCreate = cur.rowcount() > 0
+        print(isCreate)
     except Exception as e:
         print(e)
         print("Error with database")
@@ -182,7 +179,7 @@ def make_booking(email, car_rego, date, hour, duration):
     #       - Etc.
     # return False if booking was unsuccessful :)
     # We want to make sure we check this thoroughly
-    return val
+    return isCreate
 
 
 def get_all_bookings(email):
@@ -196,7 +193,6 @@ def get_all_bookings(email):
         #Try to get all the info return from the query
         cur.execute(""" SELECT * FROM getAllBooking(%s); """, (email,))
         rows = cur.fetchall()
-        print(rows)
     except Exception as e:
         print(e);
         print("Error fetching from database")
@@ -217,7 +213,8 @@ def get_booking(b_date, b_hour, car):
         
         # Get the information about a certain booking
         # It has to have the combination of date, hour and car
-        cur.execute("""SELECT * FROM fetchbooking(%s,%s,%s)""", (car, b_date, b_hour))
+        cur.execute("""SELECT * from fetchbooking(%s,%s,%s)""", (car, b_date, b_hour))
+        
         row = cur.fetchone()
     except Exception as e:
         print("Error fetching from database")
@@ -265,7 +262,6 @@ def get_all_cars():
 
       cur.execute(""" SELECT regno, name from carsharing.car""")
       rows = cur.fetchall()
-      print(rows)
       if len(rows)==0:
         rows=None
     except Exception as e:

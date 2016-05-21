@@ -180,10 +180,10 @@ def homebay():
         # Update the homebay
         outcome = database.update_homebay(user_details['email'], bay)
         #print(user_details['email'],bay)
-        print(outcome)
+  
         # Is it successful?
-        if(outcome):
-            user_details['homebay'] = bay
+        if(outcome is not None):
+            user_details['homebay'] = outcome
             page['bar'] = True
             flash("Success, homebay updated!")
         else:
@@ -221,6 +221,7 @@ def new_booking():
                                 request.form['book_date'],
                                 request.form['book_hour'],
                                 request.form['duration'])
+    print("success",success)
     if(success == True):
         page['bar'] = True
         flash("Booking Successful!")
