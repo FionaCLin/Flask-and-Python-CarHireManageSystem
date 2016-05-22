@@ -226,6 +226,8 @@ def new_booking():
     
     if(success == True):
         page['bar'] = True
+        print(user_details['num_bookings'])
+        user_details['num_bookings'] +=1
         newbook_url=url_for('my_bookings')
         newbook_url+='?regno='+request.form['car_regno']
         newbook_url+='&b_date='+request.form['book_date']

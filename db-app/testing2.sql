@@ -1,4 +1,5 @@
-﻿
+﻿--updat home bay stored procedure
+--------------------------------------------------------
 CREATE OR REPLACE FUNCTION updateHomebay(e_mail VARCHAR,bname VARCHAR)
 RETURNS VARCHAR
 AS $$
@@ -17,33 +18,31 @@ DROP FUNCTION updatehomebay(character varying,character varying)
 SELECT updateHomebay('MrajayBains@gmail.com','Darlinghurst - Crown Street')
 
 --------------------------------------------------------
---add starttime checking constraint in table to forbid member book car in the past
+
 
 
 CREATE OR REPLACE FUNCTION makeBooking(car_rego VARCHAR,e_mail VARCHAR,date varchar,hour int,duration int)
-RETURNS FLOAT 
+RETURNS BOOLEAN 
 AS $$
 DECLARE
-member record;
+member INT;
 stime TIMESTAMP;
 etime TIMESTAMP;
-BEGIN
-TRANSACTION;
+nrb INT;
+BEGIN 
   stime := (SELECT to_timestamp(date,'YYYY-MM-DD') + hour *interval'1 hour');
-  IF(stime>now()) 
+  --add starttime checking constraint in table to forbid member book car in the past
+  IF(stime>now()) THEN
     etime := (stime + duration *interval '1 hour');
     member := (SELECT memberno FROM carsharing.member WHERE email=e_mail);
+    nrb := (SELECT stat_nrofbookings FROM carsharing.member WHERE email = $2);
     INSERT INTO carsharing.Booking(car,madeby,whenbooked,starttime,endtime)
-    VALUES (car_rego,mnr,now(),stime,etime);
-
-    REFRESH MATERIALIZED VIEW CONCURRENTLY carsharing.reservation;
+    VALUES (car_rego,member,now(),stime,etime);
   ELSE
     RAISE EXCEPTION 'No booking made in past';
   END IF;
-  
   RETURN true;
-COMMIT;
-
+END;
 $$LANGUAGE 'plpgsql';
 
 ---check overlapping booking
@@ -53,6 +52,7 @@ RETURNS trigger AS $$
 DECLARE
 rec RECORD;
 BEGIN
+    --refresh my view everytime I need to insert my table.
     REFRESH MATERIALIZED VIEW CONCURRENTLY carsharing.reservation;
     --refactor this carsharing.booking to my materialised view reservation
      FOR rec IN SELECT starttime,  endtime FROM reservation WHERE car = NEW.car
@@ -65,18 +65,35 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-INSERT INTO carsharing.Booking(madeby,car,start_time,duration) VALUES (23,'AT61LA',now()+interval '9 days',3); 
-
+---triger check overlap trigger and refresh the materialised view---
 CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON carsharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE OverlappingTime();
 
+CREATE OR REPLACE FUNCTION incrementNumberOfBooking()
+RETURNS trigger AS $$
+DECLARE
+nrb INT;
+BEGIN
+    nrb := (SELECT stat_nrofbookings FROM carsharing.member WHERE memberno = NEW.madeby);
+    UPDATE carsharing.member SET stat_nrofbookings=nrb+1 WHERE memberno = NEW.madeby;
+    return old;
+END;
+$$ LANGUAGE plpgsql;
+
+---triger update member statistic number of booking ---
+CREATE TRIGGER updateMemberStatOfBooking
+AFTER INSERT ON carsharing.Booking
+FOR EACH ROW
+EXECUTE PROCEDURE incrementNumberOfBooking();
 
 
-SELECT * from makebooking('AT61LA','MrajayBains@gmail.com','2019-05-20',13,4)
+SELECT * from makebooking('AT61LA','MrajayBains@gmail.com','2019-05-20',12,4);
 
-delete from carsharing.booking where car='AT61LA' and starttime = (SELECT to_timestamp('2061-05-20','YYYY-MM-DD') + 17 *interval'1 hour');
+SELECT stat_nrofbookings FROM CARSHARING.MEMBER WHERE EMAIL = 'MrajayBains@gmail.com'
+
+delete from carsharing.booking where car='AT61LA' 
 
 SELECT * from carsharing.booking where car='AT61LA'
 
