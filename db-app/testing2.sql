@@ -72,6 +72,7 @@ nrb INT ;
 BEGIN
     nrb := (SELECT stat_nrofbookings FROM CarSharing.Member WHERE memberno = NEW.madeby);
     UPDATE CarSharing.Member SET stat_nrofbookings=nrb+1 WHERE memberno = NEW.madeby;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
     RETURN old;
 END;
 $$ LANGUAGE plpgsql;
@@ -88,14 +89,26 @@ CREATE OR REPLACE FUNCTION getCarsInBay(bname VARCHAR)
 RETURNS TABLE(reg REGOTYPE,cn VARCHAR)
 AS $$
 BEGIN
+ REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
  RETURN QUERY SELECT regno, name 
  FROM CarSharing.Car 
  WHERE parkedat = ( 
   SELECT bayid 
   FROM CarSharing.Carbay 
-  WHERE name = bname);
+  WHERE name = bname)
+  AND regno NOT IN (
+  SELECT car 
+  from CarSharing.Reservation
+  WHERE (starttime < NOW() AND NOW() <endtime)
+ );  
 END;
 $$LANGUAGE 'plpgsql';
+
+SELECT * FROM getcarsinbay('Newtown - Wilson Street Car Park')
+
+SELECT *
+  from CarSharing.Reservation
+  WHERE starttime between now() and now()+interval '2 hours'
 
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION getAllBooking(e_mail VARCHAR)
@@ -146,7 +159,8 @@ RETURNS TABLE(name VARCHAR,address VARCHAR, nrOfCar BIGINT)
 AS $$
 BEGIN
   RETURN QUERY SELECT CarSharing.Carbay.name , CarSharing.Carbay.address, 
-  COUNT(CarSharing.Car.regno) FROM CarSharing.Carbay  JOIN CarSharing.Car 
+  COUNT(CarSharing.Car.regno) 
+  FROM CarSharing.Carbay  JOIN CarSharing.Car 
   ON bayid = parkedat GROUP BY bayid;
  END;
  $$LANGUAGE 'plpgsql';
@@ -165,6 +179,24 @@ BEGIN
  END;
  $$LANGUAGE 'plpgsql';
 
+
+
+--------------------------------------------------------
+CREATE OR REPLACE FUNCTION getCarAvailability(rego VARCHAR)
+RETURNS TABLE(hour INT,Duration INT)
+AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
+  RETURN QUERY SELECT CAST(EXTRACT(HOUR FROM r.starttime) AS int) AS hour ,
+    CAST(EXTRACT(EPOCH FROM r.endtime-r.starttime) AS int)/3600 AS duration
+  FROM CarSharing.Reservation AS r
+  WHERE r.car=rego and CAST(r.starttime AS date)=CAST(now() AS date);
+END;
+ $$LANGUAGE 'plpgsql';
+
+ 
+DROP FUNCTION getcaravailability(character varying)
+select * from getCarAvailability('AO40EH')
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION fetchbooking(b_car CHAR(6),b_date DATE,b_hour INT)
 RETURNS TABLE ( mname TEXT, car regotype, cname VARCHAR, date DATE,
@@ -196,12 +228,14 @@ CREATE MATERIALIZED VIEW CarSharing.Reservation
 AS
   SELECT Car,starttime,endtime
   FROM CarSharing.booking
-  WHERE starttime >=now()
+  WHERE starttime >= (NOW()-interval '1 day')
   ORDER BY starttime DESC
 WITH DATA;
 
 CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (Car,starttime);
 
+
+drop MATERIALIZED VIEW CarSharing.Reservation
 -----extension 4 member analysis flat table------------
 
  
@@ -222,6 +256,34 @@ from carsharing.member
 order by freq desc, recent desc, pay desc;
 
 
+-----------Dynamic update Member statistic----------------------
+ 
+CREATE OR REPLACE FUNCTION incrementStats()
+RETURNS TRIGGER AS $$
+DECLARE
+nrb INTEGER;
+wkend INTEGER;
+dayofweek INTEGER;
+BEGIN
+    nrb := (SELECT stat_nrOfBookings FROM carsharing.member WHERE memberno = NEW.madeby);
+    wkend := (SELECT stat_weekendBookings FROM carsharing.member WHERE memberno = NEW.madeby);
+    dayofweek := EXTRACT(dow FROM NEW.starttime);
+    IF (dayofweek = 0 OR dayofweek = 6) THEN
+        wkend := wkend + 1;
+    END IF;
+    UPDATE carsharing.member 
+    SET stat_nrOfBookings = nrb + 1, 
+        stat_weekendBookings = wkend, 
+        stat_mostRecentBooking = NEW.whenbooked
+    WHERE memberno = NEW.madeby;
+    RETURN OLD;
+END;
+$$ LANGUAGE 'plpgsql';
 
+DROP TRIGGER updateMemberStatOfBooking ON carsharing.Booking;
 
+CREATE TRIGGER updateMemberStatOfBooking
+AFTER INSERT ON carsharing.Booking
+FOR EACH ROW
+EXECUTE PROCEDURE incrementStats();
 

@@ -237,8 +237,6 @@ def get_car_details(regno):
     try:
         cur.execute(""" Select * From getCarDetail(%s)""",(regno,))
         val=cur.fetchone()
-        if len(val)==0:
-            val=None
     except Exception as e:
         print(e)
         print("Error with fetching from databade")
@@ -246,6 +244,21 @@ def get_car_details(regno):
     conn.close()
     return val
 
+def get_car_unavailability(regno):
+    rows=None
+    conn = database_connect()
+    if conn is None:
+        return ERROR_CODE
+    cur = conn.cursor()
+    try:
+        cur.execute("""SELECT * FROM getCarAvailability(%s)""",(regno,))
+        rows=cur.fetchall()
+    except Exception as e:
+
+        print("Error with fetching from databade")
+    cur.close()
+    conn.close()
+    return rows
 
 def get_all_cars():
     rows = None
@@ -265,7 +278,6 @@ def get_all_cars():
       if len(rows)==0:
         rows=None
     except Exception as e:
-      print(e)
       print("Error fetching from database")
     cur.close()
     conn.close()
@@ -378,10 +390,10 @@ def get_stats():
         return ERROR_CODE
     cur = conn.cursor()
     try:
-        sql = """select * from carsharing.frat_table
-              """
+        sql = """select * from carsharing.frat_table """
         cur.execute(sql)
         rows = cur.fetchall()
+        print(rows)
         if len(rows) == 0:
             rows = None
     except Exception as e:

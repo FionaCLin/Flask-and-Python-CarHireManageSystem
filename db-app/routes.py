@@ -106,12 +106,16 @@ def list_cars():
     # If we have a specific car to get
     # Go to the database and get the details
     val = database.get_car_details(car)
+    
+    print(availability)
     if(val is None):
         val = []
         flash("Error, car \'{}\' does not exist".format(car))
         page['bar'] = False
+        unavailability=database.get_car_unavailability(car)
+        ##need to convert the unavailabe to available
 
-    return render_template('car_detail.html', car=val, session=session,page=page)
+    return render_template('car_detail.html', car=val, times=times, session=session,page=page)
 
 #####################################################
 ##  LIST BAYS
@@ -215,6 +219,7 @@ def new_booking():
             page['bar'] = False
             return(redirect(url_for('index')))
         times = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+
         return render_template('new_booking.html', cars=cars, times=times, session=session, page=page, from_car=from_car)
     # If we're making the booking
     success = database.make_booking(user_details['email'],
@@ -282,5 +287,7 @@ def memAnalysis():
         page['bar'] = False
         return(redirect(url_for('memAnalysis')))
 
-    return render_template('memberAnalysis.html', session=session, page=page, reports=reports)
+    return render_template('memberAnalysis.html', 
+        session=session, page=page,
+        reports=reports, user=user_details)
  
