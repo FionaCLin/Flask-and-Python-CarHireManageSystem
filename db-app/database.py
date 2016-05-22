@@ -369,3 +369,27 @@ def get_cars_in_bay(bay_name):
     cur.close()
     conn.close()
     return rows
+
+
+def get_stats():
+    rows = None
+    conn = database_connect()
+    if conn is None:
+        return ERROR_CODE
+    cur = conn.cursor()
+    try:
+        sql = """select * from carsharing.frat_table
+              """
+        cur.execute(sql)
+        rows = cur.fetchall()
+        if len(rows) == 0:
+            rows = None
+    except Exception as e:
+        print(e)
+        print("Error")
+
+    cur.close()
+    conn.close()
+    return rows
+
+#def get_availability():

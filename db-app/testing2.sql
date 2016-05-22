@@ -49,7 +49,7 @@ BEGIN
     --refresh my view everytime I need to insert my table.
     REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
     --refactor this CarSharing.booking to my materialised view reservation
-    FOR rec IN SELECT starttime,endtime FROM Reservation WHERE car = NEW.car
+    FOR rec IN SELECT starttime,endtime FROM CarSharing.Reservation WHERE car = NEW.car
     LOOP
         IF (rec.starttime, rec.endtime) OVERLAPS (NEW.starttime, NEW.endtime) THEN
             RAISE EXCEPTION 'Overlapping booking';
@@ -190,15 +190,38 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql'
 
-
+-----extension 1 materialised reservation view----------
 
 CREATE MATERIALIZED VIEW CarSharing.Reservation
 AS
   SELECT Car,starttime,endtime
   FROM CarSharing.booking
-  WHERE starttime > now()
+  WHERE starttime >=now()
   ORDER BY starttime DESC
 WITH DATA;
 
 CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (Car,starttime);
+
+-----extension 4 member analysis flat table------------
+
+ 
+alter table carsharing.member alter column password type varchar(100);
+alter table carsharing.member add column stat_weekendBookings integer default 0;
+alter table carsharing.member add column stat_mostRecentBooking timestamp;
+
+create or replace view carsharing.frat_table as
+select nameGiven || ' ' || nameFamily as name,
+       ntile(5) over (order by stat_nrOfBookings asc) as freq,
+       ntile(5) over (order by stat_mostRecentBooking asc) as recent,
+       ntile(5) over (order by stat_sumPayments asc) as pay,
+       CASE
+       WHEN stat_weekendBookings < (stat_nrOfBookings - stat_weekendBookings) THEN 'weekday'
+       ELSE 'weekend'
+       END as type
+from carsharing.member
+order by freq desc, recent desc, pay desc;
+
+
+
+
 

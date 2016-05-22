@@ -223,7 +223,7 @@ def new_booking():
                                 request.form['book_hour'],
                                 request.form['duration'])
     
-    
+    print(request.form['book_date'])
     if(success == True):
         page['bar'] = True
         print(user_details['num_bookings'])
@@ -231,7 +231,7 @@ def new_booking():
         newbook_url=url_for('my_bookings')
         newbook_url+='?regno='+request.form['car_regno']
         newbook_url+='&b_date='+request.form['book_date']
-        newbook_url+='&b_hour='+request.form['book_hour']
+        newbook_url+='&b_hour='+request.form['duration']
         flash("Booking Successful!")
         return(redirect(newbook_url))
     else:
@@ -269,12 +269,18 @@ def my_bookings():
 
 
 #####################################################
-## HOMEBAY
+##  ANALYSIS
 #####################################################
+
 @app.route('/analysis')
 def memAnalysis():
-    
-    return render_template('memberAnalysis.html',
-        session=session,
-        page=page,
-        reports=[])
+    if( 'logged_in' not in session or not session['logged_in']):
+        return redirect(url_for('login'))
+    reports = database.get_stats()
+    if reports is None:
+        flash("Error, there are no users in the system")
+        page['bar'] = False
+        return(redirect(url_for('memAnalysis')))
+
+    return render_template('memberAnalysis.html', session=session, page=page, reports=reports)
+ 
