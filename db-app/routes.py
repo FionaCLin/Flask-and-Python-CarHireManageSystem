@@ -184,7 +184,7 @@ def homebay():
     if(action == 'update'):
         # Update the homebay
         outcome = database.update_homebay(user_details['email'], bay)
-        #print(user_details['email'],bay)
+
   
         # Is it successful?
         if(outcome is not None):
@@ -227,11 +227,10 @@ def new_booking():
                                 request.form['book_date'],
                                 request.form['book_hour'],
                                 request.form['duration'])
-    
-    print(request.form['book_date'])
+
     if(success == True):
         page['bar'] = True
-        print(user_details['num_bookings'])
+
         user_details['num_bookings'] +=1
         newbook_url=url_for('my_bookings')
         newbook_url+='?regno='+request.form['car_regno']

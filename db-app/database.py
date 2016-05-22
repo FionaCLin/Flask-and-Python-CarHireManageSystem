@@ -28,7 +28,7 @@ def database_connect():
         connection, please try again. (Update your files first, then check
         internet connection)
         """)
-        print(e)
+       
     #return the connection to use
     return connection
 
@@ -141,7 +141,7 @@ def update_homebay(email, bayname):
         cur.execute("""Select * FROM updateHomebay(%s,%s)""", ( email ,bayname))
         isUpdated=cur.fetchone()[0]
     except Exception as e:
-        print(e)
+       
         print("Error with update database")
     cur.close()
     conn.close()
@@ -169,7 +169,6 @@ def make_booking(email, car_rego, date, hour, duration):
         #isCreate = cur.rowcount() > 0
         print(isCreate)
     except Exception as e:
-        print(e)
         print("Error with database")
     cur.close()
     conn.close()
@@ -194,7 +193,7 @@ def get_all_bookings(email):
         cur.execute(""" SELECT * FROM getAllBooking(%s); """, (email,))
         rows = cur.fetchall()
     except Exception as e:
-        print(e);
+       
         print("Error fetching from database")
     cur.close()
     conn.close()
@@ -238,7 +237,7 @@ def get_car_details(regno):
         cur.execute(""" Select * From getCarDetail(%s)""",(regno,))
         val=cur.fetchone()
     except Exception as e:
-        print(e)
+       
         print("Error with fetching from databade")
     cur.close()
     conn.close()
@@ -308,7 +307,7 @@ def get_all_bays():
         if len(rows)==0:
            rows=None
     except Exception as e:
-        print(e)
+       
         print("Error with database")  
     # Return the results
     return rows
@@ -330,7 +329,7 @@ def get_bay(name):
         val = cur.fetchone()
         
     except Exception as e:
-        print(e)
+       
         print("Error with database")
     cur.close()
     conn.close()
@@ -354,7 +353,7 @@ def search_bays(search_term):
         if len(rows)==0:
             rows=None
     except Exception as e:
-        print(e)
+       
         print("error with fetching database")
     return rows
 
@@ -376,7 +375,7 @@ def get_cars_in_bay(bay_name):
         if len(rows)==0:
             rows=None
     except Exception as e:
-        print(e)
+       
         print("error with fetching from database")
     cur.close()
     conn.close()
@@ -393,15 +392,13 @@ def get_stats():
         sql = """select * from carsharing.frat_table """
         cur.execute(sql)
         rows = cur.fetchall()
-        print(rows)
+        
         if len(rows) == 0:
             rows = None
     except Exception as e:
-        print(e)
+       
         print("Error")
 
     cur.close()
     conn.close()
     return rows
-
-#def get_availability():
