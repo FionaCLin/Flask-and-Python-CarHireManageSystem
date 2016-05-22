@@ -17,26 +17,64 @@ DROP FUNCTION updatehomebay(character varying,character varying)
 SELECT updateHomebay('MrajayBains@gmail.com','Darlinghurst - Crown Street')
 
 --------------------------------------------------------
+--add starttime checking constraint in table to forbid member book car in the past
+
 
 CREATE OR REPLACE FUNCTION makeBooking(car_rego VARCHAR,e_mail VARCHAR,date varchar,hour int,duration int)
-RETURNS boolean 
+RETURNS FLOAT 
 AS $$
 DECLARE
-mnr INT;
+member record;
 stime TIMESTAMP;
 etime TIMESTAMP;
 BEGIN
+TRANSACTION;
   stime := (SELECT to_timestamp(date,'YYYY-MM-DD') + hour *interval'1 hour');
-  etime := (stime + duration *interval '1 hour');
-  mnr := (SELECT memberno FROM carsharing.member WHERE email=e_mail);
-  INSERT INTO carsharing.Booking(car,madeby,whenbooked,starttime,endtime)
-  VALUES (car_rego,mnr,now(),stime,etime);
+  IF(stime>now()) 
+    etime := (stime + duration *interval '1 hour');
+    member := (SELECT memberno FROM carsharing.member WHERE email=e_mail);
+    INSERT INTO carsharing.Booking(car,madeby,whenbooked,starttime,endtime)
+    VALUES (car_rego,mnr,now(),stime,etime);
+
+    REFRESH MATERIALIZED VIEW CONCURRENTLY carsharing.reservation;
+  ELSE
+    RAISE EXCEPTION 'No booking made in past';
+  END IF;
+  
   RETURN true;
-END;
+COMMIT;
+
 $$LANGUAGE 'plpgsql';
 
+---check overlapping booking
+CREATE OR REPLACE
+FUNCTION OverlappingTime()
+RETURNS trigger AS $$
+DECLARE
+rec RECORD;
+BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY carsharing.reservation;
+    --refactor this carsharing.booking to my materialised view reservation
+     FOR rec IN SELECT starttime,  endtime FROM reservation WHERE car = NEW.car
+    LOOP
+        IF (rec.starttime, rec.endtime) OVERLAPS (NEW.starttime, NEW.endtime) THEN
+            RAISE EXCEPTION 'Overlapping booking';
+        END IF;
+    END LOOP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-SELECT * from makebooking('AT61LA','MrajayBains@gmail.com','2015-05-20',17,4)
+INSERT INTO carsharing.Booking(madeby,car,start_time,duration) VALUES (23,'AT61LA',now()+interval '9 days',3); 
+
+CREATE TRIGGER CheckOverlappingTime
+BEFORE INSERT OR UPDATE ON carsharing.Booking
+FOR EACH ROW
+EXECUTE PROCEDURE OverlappingTime();
+
+
+
+SELECT * from makebooking('AT61LA','MrajayBains@gmail.com','2019-05-20',13,4)
 
 delete from carsharing.booking where car='AT61LA' and starttime = (SELECT to_timestamp('2061-05-20','YYYY-MM-DD') + 17 *interval'1 hour');
 
@@ -150,17 +188,44 @@ Select * From getCarDetail('AN83WT');
 
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION fetchbooking(b_car char(6),b_date varchar,b_hour int)
-RETURNS TABLE(mname text,car regotype,cname varchar,date text,hour int,duration int,madeday text,bay varchar)
+RETURNS TABLE (
+  mname text, 
+  car regotype,
+  cname varchar,
+  date text,
+  hour int,
+  duration int,
+  madeday text,
+  bay varchar,
+  cost amountincents)
 AS $$
-
+DECLARE
+mRow carsharing.member%ROWTYPE;
+bRow carsharing.booking%ROWTYPE;
+cbRow carsharing.carbay%ROWTYPE;
+cRow carsharing.car%ROWTYPE;
+rate amountincents;
 BEGIN
-  RETURN QUERY SELECT m.namegiven||' '||m.namefamily, b.car, 
-  c.name, to_char(b.starttime,'DD-MM-YYYY') AS date,
-  cast(EXTRACT(HOUR FROM starttime) as int) as hour ,cast(EXTRACT( hour FROM endtime-starttime) as int) AS duration ,
-  to_char(b.whenbooked,'DD-MM-YYYY')
-  AS madeday , cb.name as bay 
-  FROM carsharing.booking AS b JOIN carsharing.car AS C ON b.car=regno JOIN carsharing.member AS m ON b.madeby= m.memberno JOIN carsharing.carbay as cb ON c.parkedat=cb.bayid
-  WHERE b.car=b_car AND to_char(b.starttime,'DD-MM-YYYY') = b_date AND EXTRACT(HOUR FROM starttime) = b_hour;
+  SELECT booking.car, cast(EXTRACT(HOUR FROM booking.starttime) as int) as hour ,cast(EXTRACT( hour FROM booking.endtime-starttime) as int) AS duration,
+	to_char(booking.whenbooked,'DD-MM-YYYY') AS madeday
+  INTO bROW 
+  FROM carsharing.booking WHERE booking.car=b_car AND 
+	starttime =to_timestamp(b_date,'YYYY-MM-DD') + b_hour *interval'1 hour');
+	
+  mRow := (SELECT namegiven||' '||namefamily as fullname, subscribed FROM carsharing.member where memberno = bRow.madeby);
+  
+  cRow := (SELECT name ,parkedat FROM carsharing.car WHERE regno = bROW.car);
+  
+  cbRow:= (SELECT name FROM carsharing.carbay WHERE bayid =cRow.parkedat);
+  
+  rate := (SELECT hourly_rate FROM carsharing.membershipplan WHERE title = mRow.subscribed);
+
+  RETURN QUERY SELECT mRow.fullname, bRow.car, cRow.name,bRow.date,bRow.hour,bRow.Duration,bRow.madeday,cbRow.name,bRow.Duration*rate
+  FROM bRow,mRow,cbRow,cRow,rate;
+  
+ --  RETURN QUERY SELECT m.namegiven||' '||m.namefamily, b.car, c.name, to_char(b.starttime,'DD-MM-YYYY') AS date, cast(EXTRACT(HOUR FROM starttime) as int) as hour ,cast(EXTRACT( hour FROM endtime-starttime) as int) AS duration ,
+ --  to_char(b.whenbooked,'DD-MM-YYYY')  AS madeday , cb.name as bay FROM carsharing.booking AS b JOIN carsharing.car AS C ON b.car=regno JOIN carsharing.member AS m ON b.madeby= m.memberno 
+ -- JOIN carsharing.carbay as cb ON c.parkedat=cb.bayid WHERE b.car=b_car AND to_char(b.starttime,'DD-MM-YYYY') = b_date AND EXTRACT(HOUR FROM starttime) = b_hour;
 
 END;
 $$ LANGUAGE 'plpgsql'

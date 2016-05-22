@@ -10,12 +10,15 @@ CREATE INDEX bookdate_index ON  carsharing.reservation (bookdate);
 CREATE OR REPLACE FUNCTION 1stTimeGenerateReservation()
 RETURN VOID AS $$
 DECLARE
-re RECORD
+re RECORD;
+h INT;
 BEGIN
   --get a record from booking
   FOR re IN (SELECT car,starttime FROM carsharing.booking) LOOP
 	--check if it is in reservation table
-    IF()	
+    IF (SELECT * FROM carsharing.reservation WHERE regno = re.car AND bookdate=re.starttime)<0 THEN
+      h := cast( EXTRACT(HOUR FROM starttime) as int );
+      INSERT INTO carsharing.reservation VALUES (re.car,re.starttime,)		
   END LOOP;
   
 
@@ -29,7 +32,22 @@ BEGIN
   --else insert a new record
 
  END;
- $$ LANGUAGE 'PLPGSQL'
+ 
+CREATE FUNCTION tobits(a integer, b integer)
+  RETURNS bitstring
+AS $$
+  if
+    return None
+  if a > b:
+    return a
+  return b
+ 
+$$ LANGUAGE plpythonu;
+
+ 
+select cast(17 as bit(24));
+
+select ;
 
 CREATE OR REPLACE FUNCTION insertReservation() RETURN tigger AS $$
 
