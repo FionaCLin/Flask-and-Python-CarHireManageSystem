@@ -8,7 +8,7 @@
                 <th>Car Registration</th>
                 <th>Car Name</th>
                 <th>Date</th>
-                <th>Time</th>
+                <th>Duration(HOUR)</th>
                 <th></th>
             </tr>
         </thead>
@@ -19,7 +19,7 @@
                 <td><a href="{{url_for('list_cars')}}?car={{ item[0] }}">{{ item[0] }}</a></td>
                 <td>{{ item[1] }}</td>
                 <td>{{ item[2] }}</td>
-                <td>{{ item[3] }}:00</td>
+                <td>{{ item[3] }}</td>
                 <td><a class="booking-detail-button" href="{{url_for('my_bookings')}}?regno={{item[0]}}&b_date={{item[2]}}&b_hour={{item[3]}}">View Details</a></td>
             </tr>
             {% endfor %}
