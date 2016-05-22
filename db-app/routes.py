@@ -4,7 +4,7 @@ from modules import *
 from flask import *
 import database
 import configparser
-from flask.ext.paginate import Pagination
+
 
 ERROR_CODE = database.ERROR_CODE    # Error code
 user_details = {}                   # User details kept for us
@@ -222,14 +222,20 @@ def new_booking():
                                 request.form['book_date'],
                                 request.form['book_hour'],
                                 request.form['duration'])
-    print("success",success)
+    
+    
     if(success == True):
         page['bar'] = True
+        newbook_url=url_for('my_bookings')
+        newbook_url+='?regno='+request.form['car_regno']
+        newbook_url+='&b_date='+request.form['book_date']
+        newbook_url+='&b_hour='+request.form['book_hour']
         flash("Booking Successful!")
-        return(redirect(url_for('my_bookings')))
+        return(redirect(newbook_url))
     else:
         page['bar'] = False
         flash("There was an error making your booking.")
+        
         return(redirect(url_for('new_booking')))
 
 
@@ -255,22 +261,7 @@ def my_bookings():
 
     # If no booking, then get all the bookings made by the user
     val = database.get_all_bookings(user_details['email'])
-    search = False
-    q = request.args.get('q')
-    if q:
-        search = True
-    try:
-        page = int(request.args.get('page', 1))
-    except ValueError:
-        page = 1
-
-    pagination = Pagination(page=page, total=val.count(), search=search, record_name='val')
-    return render_template('bookings_list.html',
-                           bookings=val,
-                           pagination=pagination,
-                           )
-
-    #return render_template('bookings_list.html', bookings=val, session=session, page=page)
+    return render_template('bookings_list.html', bookings=val, session=session, page=page)
 
 
 

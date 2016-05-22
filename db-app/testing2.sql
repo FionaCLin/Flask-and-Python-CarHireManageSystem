@@ -102,11 +102,11 @@ select * from getCarsInBay('Erskineville - Erskineville Road')
 
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION getAllBooking(e_mail varchar)
-RETURNS table(car regotype,name varchar,date text,hour int,stime timestamp) 
+RETURNS table(car regotype,name varchar,date date,hour int,stime timestamp) 
 AS $$
 BEGIN
   Return QUERY SELECT b.car AS car, c.name AS name , 
-  to_char(b.starttime,'DD-MM-YYYY') 
+  cast(b.starttime as date) 
   AS date ,
   cast( EXTRACT(HOUR FROM starttime) as int )AS hour ,b.starttime
   FROM carsharing.Booking AS b join carsharing.Car As C ON b.car = regno 
@@ -133,6 +133,8 @@ BEGIN
   GROUP BY bayid ;
  END;
  $$LANGUAGE 'plpgsql';
+
+select cast(now() as date)
 
 
 SELECT * from fetchBays('Road') 
@@ -187,52 +189,55 @@ BEGIN
 Select * From getCarDetail('AN83WT');
 
 --------------------------------------------------------
-CREATE OR REPLACE FUNCTION fetchbooking(b_car char(6),b_date varchar,b_hour int)
+CREATE OR REPLACE FUNCTION fetchbooking(b_car char(6),b_date date,b_hour int)
 RETURNS TABLE (
   mname text, 
   car regotype,
   cname varchar,
-  date text,
+  date date,
   hour int,
   duration int,
   madeday text,
   bay varchar,
-  cost amountincents)
+  cost float)
 AS $$
-DECLARE
-mRow carsharing.member%ROWTYPE;
-bRow carsharing.booking%ROWTYPE;
-cbRow carsharing.carbay%ROWTYPE;
-cRow carsharing.car%ROWTYPE;
-rate amountincents;
 BEGIN
-  SELECT booking.car, cast(EXTRACT(HOUR FROM booking.starttime) as int) as hour ,cast(EXTRACT( hour FROM booking.endtime-starttime) as int) AS duration,
-	to_char(booking.whenbooked,'DD-MM-YYYY') AS madeday
-  INTO bROW 
-  FROM carsharing.booking WHERE booking.car=b_car AND 
-	starttime =to_timestamp(b_date,'YYYY-MM-DD') + b_hour *interval'1 hour');
-	
-  mRow := (SELECT namegiven||' '||namefamily as fullname, subscribed FROM carsharing.member where memberno = bRow.madeby);
-  
-  cRow := (SELECT name ,parkedat FROM carsharing.car WHERE regno = bROW.car);
-  
-  cbRow:= (SELECT name FROM carsharing.carbay WHERE bayid =cRow.parkedat);
-  
-  rate := (SELECT hourly_rate FROM carsharing.membershipplan WHERE title = mRow.subscribed);
+  RETURN QUERY 
+ SELECT m.namegiven||' '||m.namefamily, b.car, c.name, 
+    cast(b.starttime as date) AS date, 
+    cast(EXTRACT(HOUR FROM starttime) as int) as hour ,
+    cast(EXTRACT(EPOCH FROM endtime-starttime) as int)/3600 AS duration,
+    to_char(b.whenbooked,'DD-MM-YYYY')  AS madeday , cb.name as bay 
+    , cast(EXTRACT(EPOCH FROM endtime-starttime) as float)/3600*(
+      SELECT hourly_rate FROM carsharing.membershipplan
+      WHERE title =m.subscribed 
+    ) as cost
+    FROM carsharing.booking AS b 
+      JOIN carsharing.car AS C ON b.car=regno 
+      JOIN carsharing.member AS m ON b.madeby= m.memberno 
+      JOIN carsharing.carbay as cb ON c.parkedat=cb.bayid 
+    WHERE b.car=$1 AND cast(b.starttime as date) =$2 
+      AND EXTRACT(HOUR FROM starttime) = $3;
 
-  RETURN QUERY SELECT mRow.fullname, bRow.car, cRow.name,bRow.date,bRow.hour,bRow.Duration,bRow.madeday,cbRow.name,bRow.Duration*rate
-  FROM bRow,mRow,cbRow,cRow,rate;
-  
- --  RETURN QUERY SELECT m.namegiven||' '||m.namefamily, b.car, c.name, to_char(b.starttime,'DD-MM-YYYY') AS date, cast(EXTRACT(HOUR FROM starttime) as int) as hour ,cast(EXTRACT( hour FROM endtime-starttime) as int) AS duration ,
- --  to_char(b.whenbooked,'DD-MM-YYYY')  AS madeday , cb.name as bay FROM carsharing.booking AS b JOIN carsharing.car AS C ON b.car=regno JOIN carsharing.member AS m ON b.madeby= m.memberno 
- -- JOIN carsharing.carbay as cb ON c.parkedat=cb.bayid WHERE b.car=b_car AND to_char(b.starttime,'DD-MM-YYYY') = b_date AND EXTRACT(HOUR FROM starttime) = b_hour;
 
 END;
 $$ LANGUAGE 'plpgsql'
 
 DROP FUNCTION fetchbooking(character,character varying,integer)
 
-SELECT * FROM fetchbooking('AN83WT','22-03-2012',17) ;
+SELECT * FROM fetchbooking('AN83WT','3424-02-03',17) ;
 
 
+CREATE MATERIALIZED VIEW carsharing.Reservation
+AS
+ SELECT car,starttime,endtime
+   FROM carsharing.booking
+   WHERE starttime > now()
+   order by starttime desc
+  with data;
 
+CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (car,starttime);
+
+SELECT car,starttime,  endtime FROM carsharing.Reservation --WHERE car ='AT61LA'
+
+DROP MATERIALIZED VIEW Reservation
