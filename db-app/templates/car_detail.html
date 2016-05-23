@@ -44,8 +44,44 @@
                 <td> Map url </td>
 				<td> {{ car[10] }} </td>
             </tr>
-
+             
         </table>
+        <section>
+           <center><h3>Availability<h3>
+            <table>
+                <thead>
+                    <tr>
+                        <td></td>
+                        {% for hour in times %}
+                        <td > -{{hour}}:00-</td>
+                        {% endfor %}
+
+                    </tr>
+
+                </thead>
+                <tbody>
+                    <tr>
+                        <td></td>
+                        {% for a in avaib %}
+                        {% if a == False %}
+                        <td bgcolor="#FF0000" >
+                        &#10006;&#10006;&#10006;&#10006;
+                        {% else %}
+                        <td bgcolor="green">
+                        &#10004;&#10004;&#10004;&#10004;
+                        {% endif %}
+                        
+                        </td>
+                    
+                        {% endfor %}
+                    </tr>
+
+                </tbody>
+
+            </table>
+                
+        </section>
+        </center>       
     </div>
 </div>
 {% include 'bottom.html' %}

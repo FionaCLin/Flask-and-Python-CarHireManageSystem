@@ -251,7 +251,7 @@ def get_car_unavailability(regno):
     cur = conn.cursor()
     try:
         cur.execute("""SELECT * FROM getCarAvailability(%s)""",(regno,))
-        rows=cur.fetchall()
+        rows=list(cur.fetchall())
     except Exception as e:
 
         print("Error with fetching from databade")
