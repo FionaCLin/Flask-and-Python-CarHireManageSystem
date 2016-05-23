@@ -194,9 +194,6 @@ BEGIN
 END;
  $$LANGUAGE 'plpgsql';
 
- 
-DROP FUNCTION getcaravailability(character varying)
-select * from getCarAvailability('AO40EH')
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION fetchbooking(b_car CHAR(6),b_date DATE,b_hour INT)
 RETURNS TABLE ( mname TEXT, car regotype, cname VARCHAR, date DATE,
