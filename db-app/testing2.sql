@@ -1,4 +1,4 @@
-﻿--updat home bay stored procedure
+﻿--update home bay stored procedure
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION updateHomebay(e_mail VARCHAR,bname VARCHAR)
 RETURNS VARCHAR
@@ -15,7 +15,7 @@ BEGIN
 END;
 $$LANGUAGE 'plpgsql';
 
---------------------------------------------------------
+------creat booking stored procedure-----------------
 
 CREATE OR REPLACE FUNCTION makeBooking(car_rego VARCHAR,e_mail VARCHAR,date VARCHAR,hour INT,duration INT)
 RETURNS BOOLEAN 
@@ -39,7 +39,7 @@ BEGIN
 END;
 $$LANGUAGE 'plpgsql';
 
----check overlapping booking
+-------------check overlapping booking tigger-----------------
 CREATE OR REPLACE
 FUNCTION OverlappingTime()
 RETURNS TRIGGER AS $$
@@ -59,7 +59,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
----triger check overlap TRIGGER and refresh the materialised view---
+------------triger check overlap TRIGGER ----------------------
 CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON CarSharing.Booking
 FOR EACH ROW
@@ -70,20 +70,21 @@ RETURNS TRIGGER AS $$
 DECLARE
 nrb INT ;
 BEGIN
+    ------------refresh the materialised view to update current booking---------------
+    REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
     nrb := (SELECT stat_nrofbookings FROM CarSharing.Member WHERE memberno = NEW.madeby);
     UPDATE CarSharing.Member SET stat_nrofbookings=nrb+1 WHERE memberno = NEW.madeby;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
     RETURN old;
 END;
 $$ LANGUAGE plpgsql;
 
----triger update member statistic number of booking ---
+------------triger update member statistic number of booking---------------
 CREATE TRIGGER updateMemberStatOfBooking
 AFTER INSERT ON CarSharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE incrementNumberOfBooking();
 
---------------------------------------------------------
+------------get all cars in by home bay's name ----------------------------------
 
 CREATE OR REPLACE FUNCTION getCarsInBay(bname VARCHAR)
 RETURNS TABLE(reg REGOTYPE,cn VARCHAR)
@@ -104,13 +105,7 @@ BEGIN
 END;
 $$LANGUAGE 'plpgsql';
 
-SELECT * FROM getcarsinbay('Newtown - Wilson Street Car Park')
-
-SELECT *
-  from CarSharing.Reservation
-  WHERE starttime between now() and now()+interval '2 hours'
-
---------------------------------------------------------
+----------------get all the books of the member with that email----------------------------
 CREATE OR REPLACE FUNCTION getAllBooking(e_mail VARCHAR)
 RETURNS table(Car REGOTYPE,name VARCHAR,date DATE,hour INT,stime TIMESTAMP) 
 AS $$
@@ -125,9 +120,10 @@ BEGIN
   ORDER BY b.starttime DESC;
 END;
 $$  
-LANGUAGE 'plpgsql'
+LANGUAGE 'plpgsql';
 
---------------------------------------------------------
+----------------fetch car bays with specific keyword----------------------------
+
 CREATE OR REPLACE FUNCTION fetchBays(searchTerm TEXT)
 RETURNS TABLE(name VARCHAR, address VARCHAR, nrOfCar BIGINT)
 AS $$
@@ -141,7 +137,7 @@ BEGIN
  END;
  $$LANGUAGE 'plpgsql';
 
---------------------------------------------------------
+---------------fetch the home bay detail by car bay's name-----------------------
 CREATE OR REPLACE FUNCTION getBay(n VARCHAR)
 RETURNS TABLE( bname VARCHAR, descr TEXT,
  addr VARCHAR,gpsLat FLOAT,gpsLong FLOAT,walkscore INT) AS $$
@@ -152,8 +148,7 @@ BEGIN
  END;
 $$LANGUAGE 'plpgsql';
 
-
---------------------------------------------------------
+----------------get all the home bays in database system---------------------------
 CREATE OR REPLACE FUNCTION getAllBays()
 RETURNS TABLE(name VARCHAR,address VARCHAR, nrOfCar BIGINT)
 AS $$
@@ -165,7 +160,7 @@ BEGIN
  END;
  $$LANGUAGE 'plpgsql';
 
---------------------------------------------------------
+-----------------fetch car detail by its regno---------------------------------------
 CREATE OR REPLACE FUNCTION getCarDetail(rego VARCHAR)
 RETURNS TABLE(regno regotype,name VARCHAR,make VARCHAR,
 model VARCHAR,year INT,transmission VARCHAR,category VARCHAR,
@@ -181,7 +176,7 @@ BEGIN
 
 
 
---------------------------------------------------------
+----------------get the availabilities of car with the regno----------------------
 CREATE OR REPLACE FUNCTION getCarAvailability(rego VARCHAR)
 RETURNS TABLE(hour INT,Duration INT)
 AS $$
@@ -194,7 +189,7 @@ BEGIN
 END;
  $$LANGUAGE 'plpgsql';
 
---------------------------------------------------------
+----------------fetch the booking by the car and date time--------------------------
 CREATE OR REPLACE FUNCTION fetchbooking(b_car CHAR(6),b_date DATE,b_hour INT)
 RETURNS TABLE ( mname TEXT, car regotype, cname VARCHAR, date DATE,
   hour INT,duration INT,madeday TEXT,bay VARCHAR,cost FLOAT)
@@ -217,9 +212,9 @@ BEGIN
     WHERE b.Car=b_Car AND CAST(b.starttime AS date) =b_date
       AND CAST(EXTRACT(EPOCH FROM endtime-starttime) AS int)/3600  = b_hour;
 END;
-$$ LANGUAGE 'plpgsql'
+$$ LANGUAGE 'plpgsql';
 
------extension 1 materialised reservation view----------
+-----------extension 1 materialised reservation view----------
 
 CREATE MATERIALIZED VIEW CarSharing.Reservation
 AS
@@ -231,9 +226,7 @@ WITH DATA;
 
 CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (Car,starttime);
 
-
-drop MATERIALIZED VIEW CarSharing.Reservation
------extension 4 member analysis flat table------------
+------------extension 4 member analysis flat table------------
 
  
 alter table carsharing.member alter column password type varchar(100);
