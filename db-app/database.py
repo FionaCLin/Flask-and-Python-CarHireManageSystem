@@ -170,7 +170,7 @@ def make_booking(email, car_rego, date, hour, duration):
         print(isCreate)
     except Exception as e:
         print(e);
-        print("Error with database")
+        print("Error with database22")
     cur.close()
     conn.close()
     # Make sure to check for:(I think for this check, we can use some constraint check from assignment 2)
@@ -194,7 +194,7 @@ def get_all_bookings(email):
         cur.execute(""" SELECT * FROM getAllBooking(%s); """, (email,))
         rows = cur.fetchall()
     except Exception as e:
-        print(e);
+
         print("Error fetching from database")
     cur.close()
     conn.close()
@@ -239,7 +239,7 @@ def get_car_details(regno):
         cur.execute(""" Select * From getCarDetail(%s)""",(regno,))
         val=cur.fetchone()
     except Exception as e:
-       
+        print(e);
         print("Error with fetching from databade")
     cur.close()
     conn.close()

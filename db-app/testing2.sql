@@ -40,7 +40,9 @@ BEGIN
 END;
 $$LANGUAGE 'plpgsql';
 
---SELECT MAKEBOOKING('AT61LA','DrdrfosterFoster@gmail.com','2131-02-02',1,2);
+SELECT MAKEBOOKING('AT61LA','DrdrfosterFoster@gmail.com','2016-05-24',22,1);
+
+
 -------------check overlapping booking tigger-----------------
 CREATE OR REPLACE
 FUNCTION OverlappingTime()
@@ -177,6 +179,7 @@ CREATE OR REPLACE FUNCTION getCarDetail(rego VARCHAR)
 RETURNS TABLE(regno regotype,name VARCHAR,make VARCHAR,
 model VARCHAR,year INT,transmission VARCHAR,category VARCHAR,
 capacity INT,bay VARCHAR,walkscore INT,mapurl VARCHAR)
+SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY SELECT c.regno,c.name, c.make, c.model, c.year,c.transmission, 
