@@ -45,7 +45,10 @@
 				<td> {{ car[10] }} </td>
             </tr>
              
-        </table>
+        </table>       
+    </div>
+</div>
+
         <section>
            <center><h3>Availability<h3>
             <table>
@@ -53,7 +56,7 @@
                     <tr>
                         <td></td>
                         {% for hour in times %}
-                        <td > -{{hour}}:00-</td>
+                        <td >{{hour}}:00--</td>
                         {% endfor %}
 
                     </tr>
@@ -75,13 +78,11 @@
                     
                         {% endfor %}
                     </tr>
-
+                   
                 </tbody>
 
             </table>
-                
+        </center>        
         </section>
-        </center>       
-    </div>
-</div>
+
 {% include 'bottom.html' %}

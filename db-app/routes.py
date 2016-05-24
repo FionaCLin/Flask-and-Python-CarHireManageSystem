@@ -109,10 +109,11 @@ def list_cars():
     times = ['00','01','02','03','04','05','06','07','08','09', 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     unavailability=database.get_car_unavailability(car)
     avai=[True]*24
-    for i in unavailability:
-        index=i[0]
-        element=i[1]
-        avai[index:index+element]=[False]*element
+    if unavailability is not None:
+        for i in unavailability:
+            index=i[0]
+            element=i[1]
+            avai[index:index+element]=[False]*element
 
     print(avai)
 

@@ -19,7 +19,7 @@ def database_connect():
     # Create a connection to the database
     connection = None
     try:
-        connection = pg8000.connect(database=config['DATABASE']['user'],
+        connection = pg8000.connect(database=config['DATABASE']['database'],
             user=config['DATABASE']['user'],
             password=config['DATABASE']['password'],
             host=config['DATABASE']['host'])
@@ -69,7 +69,8 @@ def check_login(email, password):
             val[9] = val[9].encode('UTF-8')
         if bcrypt.hashpw(password, val[9]) != val[9]:
             val = None
-    except:
+    except Exception as e:
+        print(e);
         print("Error")
 
     cur.close()
@@ -141,7 +142,6 @@ def update_homebay(email, bayname):
         cur.execute("""Select * FROM updateHomebay(%s,%s)""", ( email ,bayname))
         isUpdated=cur.fetchone()[0]
     except Exception as e:
-       
         print("Error with update database")
     cur.close()
     conn.close()
@@ -165,10 +165,10 @@ def make_booking(email, car_rego, date, hour, duration):
 
         cur.execute(sql,(car_rego,email,date,hour,duration))
         isCreate=cur.fetchone()[0]
-        conn.commit()
         #isCreate = cur.rowcount() > 0
         print(isCreate)
     except Exception as e:
+        print(e);
         print("Error with database")
     cur.close()
     conn.close()
@@ -329,7 +329,7 @@ def get_bay(name):
         val = cur.fetchone()
         
     except Exception as e:
-       
+        
         print("Error with database")
     cur.close()
     conn.close()
@@ -353,7 +353,7 @@ def search_bays(search_term):
         if len(rows)==0:
             rows=None
     except Exception as e:
-       
+        
         print("error with fetching database")
     return rows
 
@@ -375,7 +375,7 @@ def get_cars_in_bay(bay_name):
         if len(rows)==0:
             rows=None
     except Exception as e:
-       
+        
         print("error with fetching from database")
     cur.close()
     conn.close()
