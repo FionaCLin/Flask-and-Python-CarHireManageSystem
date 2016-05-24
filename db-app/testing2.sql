@@ -2,6 +2,7 @@
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION updateHomebay(e_mail VARCHAR,bname VARCHAR)
 RETURNS VARCHAR
+SECURITY DEFINER
 AS $$
 DECLARE
 bid INT;
@@ -66,7 +67,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger check overlap TRIGGER ----------------------
-DROP TRIGGER CheckOverlappingTime ON carsharing.Booking;
+DROP TRIGGER IF EXISTS CheckOverlappingTime ON carsharing.Booking;
 
 CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON CarSharing.Booking
@@ -89,7 +90,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger update member statistic number of booking---------------
-DROP TRIGGER updateMemberStatOfBooking ON carsharing.Booking;
+DROP TRIGGER IF EXISTS updateMemberStatOfBooking ON carsharing.Booking;
 
 
 CREATE TRIGGER updateMemberStatOfBooking
@@ -122,6 +123,7 @@ $$LANGUAGE 'plpgsql';
 ----------------get all the books of the member with that email----------------------------
 CREATE OR REPLACE FUNCTION getAllBooking(e_mail VARCHAR)
 RETURNS table(Car REGOTYPE,name VARCHAR,date DATE,hour INT,stime TIMESTAMP) 
+SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY
@@ -140,6 +142,7 @@ LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION fetchBays(searchTerm TEXT)
 RETURNS TABLE(name VARCHAR, address VARCHAR, nrOfCar BIGINT)
+SECURITY DEFINER
 AS $$
 BEGIN
   searchTerm := '%'||searchTerm||'%';
@@ -154,7 +157,7 @@ BEGIN
 ---------------fetch the home bay detail by car bay's name-----------------------
 CREATE OR REPLACE FUNCTION getBay(n VARCHAR)
 RETURNS TABLE( bname VARCHAR, descr TEXT,
- addr VARCHAR,gpsLat FLOAT,gpsLong FLOAT,walkscore INT) AS $$
+ addr VARCHAR,gpsLat FLOAT,gpsLong FLOAT,walkscore INT) SECURITY DEFINER AS $$
 BEGIN
  RETURN QUERY 
  SELECT name ,description,address,gps_lat,gps_long, cb.walkscore
@@ -165,6 +168,7 @@ $$LANGUAGE 'plpgsql';
 ----------------get all the home bays in database system---------------------------
 CREATE OR REPLACE FUNCTION getAllBays()
 RETURNS TABLE(name VARCHAR,address VARCHAR, nrOfCar BIGINT)
+SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY SELECT CarSharing.Carbay.name , CarSharing.Carbay.address, 
@@ -209,6 +213,7 @@ END;
 CREATE OR REPLACE FUNCTION fetchbooking(b_car CHAR(6),b_date DATE,b_hour INT)
 RETURNS TABLE ( mname TEXT, car regotype, cname VARCHAR, date DATE,
   hour INT,duration INT,madeday TEXT,bay VARCHAR,cost FLOAT)
+SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY 
@@ -266,7 +271,7 @@ order by freq desc, recent desc, pay desc;
 -----------Dynamic update Member statistic----------------------
  
 CREATE OR REPLACE FUNCTION incrementStats()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER SECURITY DEFINER AS $$
 DECLARE
 nrb INTEGER;
 wkend INTEGER;
@@ -287,7 +292,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-DROP TRIGGER updateMemberStatOfBooking ON carsharing.Booking;
+DROP TRIGGER IF EXISTS updateMemberStatOfBooking ON carsharing.Booking;
 
 CREATE TRIGGER updateMemberStatOfBooking
 AFTER INSERT ON carsharing.Booking
@@ -344,7 +349,3 @@ GRANT UPDATE ON carsharing.Booking TO info2120public;
 GRANT SELECT ON carsharing.Membershipplan TO info2120public;
 
 COMMIT;
-
-
-
-
