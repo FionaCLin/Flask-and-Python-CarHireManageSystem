@@ -338,6 +338,8 @@ GRANT EXECUTE ON FUNCTION incrementStats() TO info2120public;
 
 GRANT UPDATE ON carsharing.Booking TO info2120public;
 
+GRANT SELECT ON carsharing.Membershipplan TO info2120public;
+
 COMMIT;
 
 
