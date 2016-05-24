@@ -19,6 +19,7 @@ $$LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION makeBooking(car_rego VARCHAR,e_mail VARCHAR,date VARCHAR,hour INT,duration INT)
 RETURNS BOOLEAN 
+SECURITY DEFINER
 AS $$
 DECLARE
 member INT;
@@ -227,11 +228,11 @@ WITH DATA;
 CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (Car,starttime);
 
 ------------extension 4 member analysis flat table------------
-
  
 alter table carsharing.member alter column password type varchar(100);
 alter table carsharing.member add column stat_weekendBookings integer default 0;
 alter table carsharing.member add column stat_mostRecentBooking timestamp;
+update table carsharing.member set password = '$2b$12$5ZWJceUuQewWJA3iPQWyteM9mEZ0PWb4OGSM4Hg.ViGKjnHV8FUPG'; 
 
 create or replace view carsharing.frat_table as
 select nameGiven || ' ' || nameFamily as name,
