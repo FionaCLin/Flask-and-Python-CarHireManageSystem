@@ -163,6 +163,7 @@ def make_booking(email, car_rego, date, hour, duration):
     # prototype or my procedure
         sql = """ SELECT makeBooking(%s,%s,%s,%s,%s)"""
 
+        cur.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
         cur.execute(sql,(car_rego,email,date,hour,duration))
         isCreate=cur.fetchone()[0]
         #isCreate = cur.rowcount() > 0

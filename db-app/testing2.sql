@@ -64,6 +64,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger check overlap TRIGGER ----------------------
+DROP TRIGGER CheckOverlappingTime ON carsharing.Booking;
+
 CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON CarSharing.Booking
 FOR EACH ROW
@@ -85,6 +87,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger update member statistic number of booking---------------
+DROP TRIGGER updateMemberStatOfBooking ON carsharing.Booking;
+
+
 CREATE TRIGGER updateMemberStatOfBooking
 AFTER INSERT ON CarSharing.Booking
 FOR EACH ROW
@@ -236,11 +241,11 @@ WITH DATA;
 CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (Car,starttime);
 
 ------------extension 4 member analysis flat table------------
-
  
 alter table carsharing.member alter column password type varchar(100);
 alter table carsharing.member add column stat_weekendBookings integer default 0;
 alter table carsharing.member add column stat_mostRecentBooking timestamp;
+update table carsharing.member set password = '$2b$12$5ZWJceUuQewWJA3iPQWyteM9mEZ0PWb4OGSM4Hg.ViGKjnHV8FUPG'; 
 
 create or replace view carsharing.frat_table as
 select nameGiven || ' ' || nameFamily as name,
@@ -332,6 +337,8 @@ GRANT SELECT ON carsharing.frat_table TO info2120public;
 GRANT EXECUTE ON FUNCTION incrementStats() TO info2120public;
 
 GRANT UPDATE ON carsharing.Booking TO info2120public;
+
+GRANT SELECT ON carsharing.Membershipplan TO info2120public;
 
 COMMIT;
 
