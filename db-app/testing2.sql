@@ -291,3 +291,55 @@ AFTER INSERT ON carsharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE incrementStats();
 
+--------grant permission--------
+
+BEGIN TRANSACTION;
+
+GRANT CONNECT ON DATABASE info2120public TO info2120public;
+GRANT USAGE ON SCHEMA carsharing TO info2120public;
+
+GRANT EXECUTE ON FUNCTION updateHomebay(VARCHAR, VARCHAR) TO info2120public;
+GRANT SELECT ON carsharing.Carbay TO info2120public;
+GRANT UPDATE ON carsharing.Member TO info2120public;
+
+GRANT EXECUTE ON FUNCTION makeBooking(VARCHAR, VARCHAR, VARCHAR, INT, INT) TO info2120public;
+GRANT INSERT ON carsharing.Booking TO info2120public;
+
+GRANT EXECUTE ON FUNCTION OverlappingTime() TO info2120public;
+GRANT SELECT ON carsharing.Reservation TO info2120public;
+--trigger
+
+GRANT EXECUTE ON FUNCTION incrementNumberOfBooking() TO info2120public;
+GRANT SELECT ON carsharing.Member TO info2120public;
+--trigger
+
+GRANT EXECUTE ON FUNCTION getCarsInBay(VARCHAR) TO info2120public;
+
+GRANT EXECUTE ON FUNCTION getAllBooking(VARCHAR) TO info2120public;
+GRANT SELECT ON carsharing.Car TO info2120public;
+
+GRANT EXECUTE ON FUNCTION fetchBays(TEXT) TO info2120public;
+
+GRANT EXECUTE ON FUNCTION getBay(VARCHAR) TO info2120public;
+
+GRANT EXECUTE ON FUNCTION getAllBays() TO info2120public;
+
+GRANT EXECUTE ON FUNCTION getCarDetail(VARCHAR) TO info2120public;
+GRANT SELECT ON carsharing.Carmodel TO info2120public;
+
+GRANT EXECUTE ON FUNCTION getCarAvailability(VARCHAR) TO info2120public;
+
+GRANT EXECUTE ON FUNCTION fetchbooking(CHAR(6), DATE, INT) TO info2120public;
+GRANT SELECT ON carsharing.Booking TO info2120public;
+
+GRANT SELECT ON carsharing.frat_table TO info2120public;
+
+GRANT EXECUTE ON FUNCTION incrementStats() TO info2120public;
+
+GRANT UPDATE ON carsharing.Booking TO info2120public;
+
+COMMIT;
+
+
+
+
