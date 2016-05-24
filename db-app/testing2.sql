@@ -24,7 +24,7 @@ DECLARE
 member INT;
 stime TIMESTAMP;
 etime TIMESTAMP;
-BEGIN 
+BEGIN
   stime := (SELECT to_timestamp(date,'YYYY-MM-DD') + hour *interval'1 hour');
   --add starttime checking constraINT in table to forbid member book Car in the past
   IF(stime>now()) THEN
@@ -39,10 +39,13 @@ BEGIN
 END;
 $$LANGUAGE 'plpgsql';
 
+--SELECT MAKEBOOKING('AT61LA','DrdrfosterFoster@gmail.com','2131-02-02',1,2);
 -------------check overlapping booking tigger-----------------
 CREATE OR REPLACE
 FUNCTION OverlappingTime()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+SECURITY DEFINER
+AS $$
 DECLARE
 rec RECORD;
 BEGIN
@@ -66,7 +69,9 @@ FOR EACH ROW
 EXECUTE PROCEDURE OverlappingTime();
 
 CREATE OR REPLACE FUNCTION incrementNumberOfBooking()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+SECURITY DEFINER
+AS $$
 DECLARE
 nrb INT ;
 BEGIN
@@ -88,6 +93,7 @@ EXECUTE PROCEDURE incrementNumberOfBooking();
 
 CREATE OR REPLACE FUNCTION getCarsInBay(bname VARCHAR)
 RETURNS TABLE(reg REGOTYPE,cn VARCHAR)
+SECURITY DEFINER
 AS $$
 BEGIN
  REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
@@ -144,7 +150,7 @@ RETURNS TABLE( bname VARCHAR, descr TEXT,
 BEGIN
  RETURN QUERY 
  SELECT name ,description,address,gps_lat,gps_long, cb.walkscore
- FROM Carbay cb WhERE cb.name =n;
+ FROM Carsharing.Carbay cb WhERE cb.name =n;
  END;
 $$LANGUAGE 'plpgsql';
 
@@ -179,6 +185,7 @@ BEGIN
 ----------------get the availabilities of car with the regno----------------------
 CREATE OR REPLACE FUNCTION getCarAvailability(rego VARCHAR)
 RETURNS TABLE(hour INT,Duration INT)
+SECURITY DEFINER
 AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
@@ -218,6 +225,7 @@ $$ LANGUAGE 'plpgsql';
 
 CREATE MATERIALIZED VIEW CarSharing.Reservation
 AS
+  
   SELECT Car,starttime,endtime
   FROM CarSharing.booking
   WHERE starttime >= (NOW()-interval '1 day')
