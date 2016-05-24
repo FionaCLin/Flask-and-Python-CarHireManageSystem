@@ -19,6 +19,7 @@ $$LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION makeBooking(car_rego VARCHAR,e_mail VARCHAR,date VARCHAR,hour INT,duration INT)
 RETURNS BOOLEAN 
+SECURITY DEFINER
 AS $$
 DECLARE
 member INT;

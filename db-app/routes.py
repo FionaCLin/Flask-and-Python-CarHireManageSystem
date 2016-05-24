@@ -235,7 +235,8 @@ def new_booking():
                                 request.form['book_date'],
                                 request.form['book_hour'],
                                 request.form['duration'])
-
+    print('r')
+    print(success);
     if(success == True):
         page['bar'] = True
 

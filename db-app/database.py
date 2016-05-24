@@ -70,7 +70,7 @@ def check_login(email, password):
         if bcrypt.hashpw(password, val[9]) != val[9]:
             val = None
     except Exception as e:
-        print(e);
+        
         print("Error")
 
     cur.close()
@@ -193,7 +193,7 @@ def get_all_bookings(email):
         cur.execute(""" SELECT * FROM getAllBooking(%s); """, (email,))
         rows = cur.fetchall()
     except Exception as e:
-       
+        print(e);
         print("Error fetching from database")
     cur.close()
     conn.close()
@@ -216,6 +216,7 @@ def get_booking(b_date, b_hour, car):
         
         row = cur.fetchone()
     except Exception as e:
+        print(e);
         print("Error fetching from database")
     cur.close()
     conn.close()
