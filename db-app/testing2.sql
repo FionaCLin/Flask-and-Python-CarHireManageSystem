@@ -64,6 +64,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger check overlap TRIGGER ----------------------
+DROP TRIGGER CheckOverlappingTime ON carsharing.Booking;
+
 CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON CarSharing.Booking
 FOR EACH ROW
@@ -85,6 +87,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger update member statistic number of booking---------------
+DROP TRIGGER updateMemberStatOfBooking ON carsharing.Booking;
+
+
 CREATE TRIGGER updateMemberStatOfBooking
 AFTER INSERT ON CarSharing.Booking
 FOR EACH ROW
