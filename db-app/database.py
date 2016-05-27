@@ -60,7 +60,7 @@ def check_login(email, password):
         #          where email = %s
         #       """
         # cur.execute(sql, (email,))
-        sql = """SELECT  nickname, nametitle, namegiven , namefamily, c.address, cb.name,since, subscribed,stat_nrofbookings, password FROM carsharing.Member as c join carsharing.carbay as cb on homebay = bayid WHERE email = %s """
+        sql = """SELECT  nickname, nametitle, namegiven , namefamily, c.address, cb.name,since, subscribed,stat_nrofbookings, password FROM carsharing.Member as c left outer join carsharing.carbay as cb on homebay = bayid WHERE email = %s """
         cur.execute(sql , (email,))
         val = cur.fetchone()
         if not isinstance(password, bytes):
@@ -166,6 +166,7 @@ def make_booking(email, car_rego, date, hour, duration):
         cur.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
         cur.execute(sql,(car_rego,email,date,hour,duration))
         isCreate=cur.fetchone()[0]
+        conn.commit()
         #isCreate = cur.rowcount() > 0
         print(isCreate)
     except Exception as e:

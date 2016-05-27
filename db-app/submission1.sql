@@ -1,8 +1,8 @@
-﻿--update home bay stored procedure
+﻿
+--update home bay stored procedure
 --------------------------------------------------------
 CREATE OR REPLACE FUNCTION updateHomebay(e_mail VARCHAR,bname VARCHAR)
 RETURNS VARCHAR
-SECURITY DEFINER
 AS $$
 DECLARE
 bid INT;
@@ -20,13 +20,12 @@ $$LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION makeBooking(car_rego VARCHAR,e_mail VARCHAR,date VARCHAR,hour INT,duration INT)
 RETURNS BOOLEAN 
-SECURITY DEFINER
 AS $$
 DECLARE
 member INT;
 stime TIMESTAMP;
 etime TIMESTAMP;
-BEGIN
+BEGIN 
   stime := (SELECT to_timestamp(date,'YYYY-MM-DD') + hour *interval'1 hour');
   --add starttime checking constraINT in table to forbid member book Car in the past
   IF(stime>now()) THEN
@@ -34,23 +33,17 @@ BEGIN
     member := (SELECT memberno FROM CarSharing.Member WHERE email=e_mail);
     INSERT INTO CarSharing.Booking(Car,madeby,whenbooked,starttime,endtime)
     VALUES (Car_rego,member,now(),stime,etime);
-    RETURN TRUE;
   ELSE
     RAISE EXCEPTION 'No booking made in past';
   END IF;
-
+  RETURN TRUE;
 END;
 $$LANGUAGE 'plpgsql';
-
---SELECT MAKEBOOKING('BI42UV','DrdrfosterFoster@gmail.com','2016-05-24',22,1);
---select getallbooking('BI42UV')
 
 -------------check overlapping booking tigger-----------------
 CREATE OR REPLACE
 FUNCTION OverlappingTime()
-RETURNS TRIGGER 
-SECURITY DEFINER
-AS $$
+RETURNS TRIGGER AS $$
 DECLARE
 rec RECORD;
 BEGIN
@@ -68,17 +61,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger check overlap TRIGGER ----------------------
-DROP TRIGGER IF EXISTS CheckOverlappingTime ON carsharing.Booking;
-
 CREATE TRIGGER CheckOverlappingTime
 BEFORE INSERT OR UPDATE ON CarSharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE OverlappingTime();
 
 CREATE OR REPLACE FUNCTION incrementNumberOfBooking()
-RETURNS TRIGGER 
-SECURITY DEFINER
-AS $$
+RETURNS TRIGGER AS $$
 DECLARE
 nrb INT ;
 BEGIN
@@ -91,9 +80,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 ------------triger update member statistic number of booking---------------
-DROP TRIGGER IF EXISTS updateMemberStatOfBooking ON carsharing.Booking;
-
-
 CREATE TRIGGER updateMemberStatOfBooking
 AFTER INSERT ON CarSharing.Booking
 FOR EACH ROW
@@ -103,7 +89,6 @@ EXECUTE PROCEDURE incrementNumberOfBooking();
 
 CREATE OR REPLACE FUNCTION getCarsInBay(bname VARCHAR)
 RETURNS TABLE(reg REGOTYPE,cn VARCHAR)
-SECURITY DEFINER
 AS $$
 BEGIN
  REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
@@ -121,11 +106,9 @@ BEGIN
 END;
 $$LANGUAGE 'plpgsql';
 
-
 ----------------get all the books of the member with that email----------------------------
 CREATE OR REPLACE FUNCTION getAllBooking(e_mail VARCHAR)
 RETURNS table(Car REGOTYPE,name VARCHAR,date DATE,hour INT,stime TIMESTAMP) 
-SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY
@@ -144,7 +127,6 @@ LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION fetchBays(searchTerm TEXT)
 RETURNS TABLE(name VARCHAR, address VARCHAR, nrOfCar BIGINT)
-SECURITY DEFINER
 AS $$
 BEGIN
   searchTerm := '%'||searchTerm||'%';
@@ -159,18 +141,17 @@ BEGIN
 ---------------fetch the home bay detail by car bay's name-----------------------
 CREATE OR REPLACE FUNCTION getBay(n VARCHAR)
 RETURNS TABLE( bname VARCHAR, descr TEXT,
- addr VARCHAR,gpsLat FLOAT,gpsLong FLOAT,walkscore INT) SECURITY DEFINER AS $$
+ addr VARCHAR,gpsLat FLOAT,gpsLong FLOAT,walkscore INT) AS $$
 BEGIN
  RETURN QUERY 
  SELECT name ,description,address,gps_lat,gps_long, cb.walkscore
- FROM Carsharing.Carbay cb WhERE cb.name =n;
+ FROM Carbay cb WhERE cb.name =n;
  END;
 $$LANGUAGE 'plpgsql';
 
 ----------------get all the home bays in database system---------------------------
 CREATE OR REPLACE FUNCTION getAllBays()
 RETURNS TABLE(name VARCHAR,address VARCHAR, nrOfCar BIGINT)
-SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY SELECT CarSharing.Carbay.name , CarSharing.Carbay.address, 
@@ -185,7 +166,6 @@ CREATE OR REPLACE FUNCTION getCarDetail(rego VARCHAR)
 RETURNS TABLE(regno regotype,name VARCHAR,make VARCHAR,
 model VARCHAR,year INT,transmission VARCHAR,category VARCHAR,
 capacity INT,bay VARCHAR,walkscore INT,mapurl VARCHAR)
-SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY SELECT c.regno,c.name, c.make, c.model, c.year,c.transmission, 
@@ -200,7 +180,6 @@ BEGIN
 ----------------get the availabilities of car with the regno----------------------
 CREATE OR REPLACE FUNCTION getCarAvailability(rego VARCHAR)
 RETURNS TABLE(hour INT,Duration INT)
-SECURITY DEFINER
 AS $$
 BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY CarSharing.reservation;
@@ -215,7 +194,6 @@ END;
 CREATE OR REPLACE FUNCTION fetchbooking(b_car CHAR(6),b_date DATE,b_hour INT)
 RETURNS TABLE ( mname TEXT, car regotype, cname VARCHAR, date DATE,
   hour INT,duration INT,madeday TEXT,bay VARCHAR,cost FLOAT)
-SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY 
@@ -224,10 +202,10 @@ BEGIN
     CAST(EXTRACT(HOUR FROM starttime) AS int) AS hour ,
     CAST(EXTRACT(EPOCH FROM endtime-starttime) AS int)/3600 AS duration,
     to_char(b.whenbooked,'DD-MM-YYYY')  AS madeday , cb.name AS bay 
-    , CAST(EXTRACT(EPOCH FROM endtime-starttime) AS FLOAT)/3600*(
+    , (CAST(EXTRACT(EPOCH FROM endtime-starttime) AS FLOAT)/3600*(
       SELECT hourly_rate FROM CarSharing.Membershipplan
       WHERE title =m.subscribed 
-    ) AS cost
+    ))/100 AS cost
     FROM CarSharing.booking AS b 
       JOIN CarSharing.Car AS C ON b.Car=regno 
       JOIN CarSharing.Member AS m ON b.madeby= m.Memberno 
@@ -241,7 +219,6 @@ $$ LANGUAGE 'plpgsql';
 
 CREATE MATERIALIZED VIEW CarSharing.Reservation
 AS
-  
   SELECT Car,starttime,endtime
   FROM CarSharing.booking
   WHERE starttime >= (NOW()-interval '1 day')
@@ -251,6 +228,8 @@ WITH DATA;
 CREATE UNIQUE INDEX DATE_TIME ON RESERVATION (Car,starttime);
 
 ------------extension 4 member analysis flat table------------
+
+
  
 alter table carsharing.member alter column password type varchar(100);
 alter table carsharing.member add column stat_weekendBookings integer default 0;
@@ -270,10 +249,12 @@ from carsharing.member
 order by freq desc, recent desc, pay desc;
 
 
+
+
 -----------Dynamic update Member statistic----------------------
  
 CREATE OR REPLACE FUNCTION incrementStats()
-RETURNS TRIGGER SECURITY DEFINER AS $$
+RETURNS TRIGGER AS $$
 DECLARE
 nrb INTEGER;
 wkend INTEGER;
@@ -294,61 +275,9 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-DROP TRIGGER IF EXISTS updateMemberStatOfBooking ON carsharing.Booking;
+DROP TRIGGER updateMemberStatOfBooking ON carsharing.Booking;
 
 CREATE TRIGGER updateMemberStatOfBooking
 AFTER INSERT ON carsharing.Booking
 FOR EACH ROW
 EXECUTE PROCEDURE incrementStats();
-
---------grant permission--------
-
-BEGIN TRANSACTION;
-
-GRANT CONNECT ON DATABASE fiona TO info2120public;
-GRANT USAGE ON SCHEMA carsharing TO info2120public;
-
-GRANT EXECUTE ON FUNCTION updateHomebay(VARCHAR, VARCHAR) TO info2120public;
-GRANT SELECT ON carsharing.Carbay TO info2120public;
-GRANT UPDATE ON carsharing.Member TO info2120public;
-
-GRANT EXECUTE ON FUNCTION makeBooking(VARCHAR, VARCHAR, VARCHAR, INT, INT) TO info2120public;
-GRANT INSERT ON carsharing.Booking TO info2120public;
-
-GRANT EXECUTE ON FUNCTION OverlappingTime() TO info2120public;
-GRANT SELECT ON carsharing.Reservation TO info2120public;
---trigger
-
-GRANT EXECUTE ON FUNCTION incrementNumberOfBooking() TO info2120public;
-GRANT SELECT ON carsharing.Member TO info2120public;
---trigger
-
-GRANT EXECUTE ON FUNCTION getCarsInBay(VARCHAR) TO info2120public;
-
-GRANT EXECUTE ON FUNCTION getAllBooking(VARCHAR) TO info2120public;
-GRANT SELECT ON carsharing.Car TO info2120public;
-
-GRANT EXECUTE ON FUNCTION fetchBays(TEXT) TO info2120public;
-
-GRANT EXECUTE ON FUNCTION getBay(VARCHAR) TO info2120public;
-
-GRANT EXECUTE ON FUNCTION getAllBays() TO info2120public;
-
-GRANT EXECUTE ON FUNCTION getCarDetail(VARCHAR) TO info2120public;
-GRANT SELECT ON carsharing.Carmodel TO info2120public;
-
-GRANT EXECUTE ON FUNCTION getCarAvailability(VARCHAR) TO info2120public;
-
-GRANT EXECUTE ON FUNCTION fetchbooking(CHAR(6), DATE, INT) TO info2120public;
-GRANT SELECT ON carsharing.Booking TO info2120public;
-
-GRANT SELECT ON carsharing.frat_table TO info2120public;
-
-GRANT EXECUTE ON FUNCTION incrementStats() TO info2120public;
-
-GRANT UPDATE ON carsharing.Booking TO info2120public;
-
-GRANT SELECT ON carsharing.Membershipplan TO info2120public;
-
-COMMIT;
-end

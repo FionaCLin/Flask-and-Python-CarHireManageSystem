@@ -1,4 +1,4 @@
-/*
+﻿/*
  * INFO2120 / INFO2820
  * Database Systems I
  *
@@ -308,8 +308,8 @@ CREATE TRIGGER PaymentMethodDeleteTrigger
 /* in the following ALTER USER username SET search_path ... command   */
 /* this ensures that the carsharing schema is automatically used when you query one of its tables */
 /* it assumes that you have loaded our unidb schema from tutorial in week 6             */
-ALTER USER <your-login> SET search_Path = '$user', public, unidb, carsharing;
-
+ALTER USER fiona SET search_Path = '$user', public, unidb, carsharing;
+ALTER USER info2120public SET search_Path = '$user', public, unidb, carsharing;
 
 /*
  * Some optional, more complex semantic integrity constraints
